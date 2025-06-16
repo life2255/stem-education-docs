@@ -1,40 +1,50 @@
+<!-- components/AppHeader.vue -->
 <template>
-  <header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+  <header class="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
     <nav class="stem-container">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
-        <NuxtLink to="/" class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
-            <span class="text-white font-bold text-xl">S</span>
+        <NuxtLink
+          to="/"
+          class="flex items-center space-x-3 px-2 py-1 -mx-2 -my-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+        >
+          <div class="w-8 h-8 bg-primary-600 dark:bg-primary-500 rounded-lg flex items-center justify-center">
+            <span class="text-white font-bold text-lg">S</span>
           </div>
-          <span class="text-xl font-semibold text-gray-900 dark:text-white">STEM Docs</span>
+          <span class="text-lg font-semibold text-gray-900 dark:text-white">STEM Docs</span>
         </NuxtLink>
 
         <!-- 主导航菜单 -->
-        <div class="hidden md:flex items-center space-x-8">
-          <!-- 学科导航 -->
+        <div class="hidden md:flex items-center space-x-1">
           <div v-for="subject in subjects" :key="subject.id" class="relative">
-            <UDropdown
-              :items="getSubjectMenuItems(subject)"
-              :popper="{ placement: 'bottom-start' }"
+            <button
+              @click="toggleSubject(subject.id)"
+              :class="[
+                'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+                activeSubject === subject.id
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              ]"
             >
-              <UButton
-                color="gray"
-                variant="ghost"
-                :label="subject.name"
-                trailing-icon="i-heroicons-chevron-down-20-solid"
+              <UIcon :name="subject.icon" class="w-4 h-4" />
+              <span>{{ subject.title }}</span>
+              <UIcon
+                name="i-heroicons-chevron-down-20-solid"
+                class="w-4 h-4 transition-transform duration-200"
+                :class="{ 'rotate-180': activeSubject === subject.id }"
               />
-            </UDropdown>
+            </button>
           </div>
         </div>
 
         <!-- 右侧工具栏 -->
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
           <!-- 搜索按钮 -->
           <UButton
             icon="i-heroicons-magnifying-glass"
             color="gray"
             variant="ghost"
+            size="sm"
             aria-label="搜索"
             @click="isSearchOpen = true"
           />
@@ -45,11 +55,12 @@
               :icon="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"
               color="gray"
               variant="ghost"
+              size="sm"
               aria-label="切换主题"
               @click="toggleColorMode"
             />
             <template #fallback>
-              <div class="w-10 h-10" />
+              <div class="w-8 h-8" />
             </template>
           </ClientOnly>
 
@@ -58,6 +69,7 @@
             icon="i-heroicons-bars-3"
             color="gray"
             variant="ghost"
+            size="sm"
             class="md:hidden"
             aria-label="菜单"
             @click="isMobileMenuOpen = true"
@@ -66,167 +78,171 @@
       </div>
     </nav>
 
+    <!-- 二级菜单栏 -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div
+        v-if="activeSubject && currentSubject"
+        class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+      >
+        <div class="stem-container">
+          <div class="flex items-center justify-between py-3">
+            <!-- 分类导航 -->
+            <div class="flex items-center space-x-1 overflow-x-auto scrollbar-hide">
+              <div class="flex items-center space-x-1 min-w-max">
+                <NuxtLink
+                  v-for="category in currentSubject.categories"
+                  :key="category.id"
+                  :to="category.path"
+                  @click="closeMenu"
+                  :class="[
+                    'flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
+                    route.path.startsWith(category.path)
+                      ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'
+                  ]"
+                >
+                  <span>{{ category.title }}</span>
+                </NuxtLink>
+              </div>
+            </div>
+
+            <!-- 关闭按钮 -->
+            <UButton
+              icon="i-heroicons-x-mark"
+              color="gray"
+              variant="ghost"
+              size="sm"
+              aria-label="关闭"
+              class="ml-4 flex-shrink-0"
+              @click="closeMenu"
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 搜索模态框 -->
     <AppSearch v-model="isSearchOpen" />
 
     <!-- 移动端菜单 -->
     <USlideover v-model="isMobileMenuOpen">
       <div class="p-4">
-        <h3 class="text-lg font-semibold mb-4">学科导航</h3>
-        <AppMobileNav @close="isMobileMenuOpen = false" />
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">学科导航</h3>
+          <UButton
+            icon="i-heroicons-x-mark"
+            color="gray"
+            variant="ghost"
+            size="sm"
+            @click="isMobileMenuOpen = false"
+          />
+        </div>
+        <AppMobileNav
+          :subjects="subjects"
+          @close="isMobileMenuOpen = false"
+          @search="handleMobileSearch"
+        />
       </div>
     </USlideover>
   </header>
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem } from '#ui/types'
-
+const route = useRoute()
 const colorMode = useColorMode()
+const { getSubjects } = useNavigation()
+
+// 响应式状态
 const isDark = computed(() => colorMode.value === 'dark')
 const isSearchOpen = ref(false)
 const isMobileMenuOpen = ref(false)
+const activeSubject = ref<string | null>(null)
 
+// 学科数据
+const { data: subjects } = await useAsyncData('subjects', () => getSubjects())
+
+// 当前激活的学科
+const currentSubject = computed(() => {
+  return subjects.value?.find(subject => subject.id === activeSubject.value)
+})
+
+// 主题切换
 const toggleColorMode = () => {
   colorMode.preference = isDark.value ? 'light' : 'dark'
 }
 
-// 学科配置
-const subjects = [
-  {
-    id: 'physics',
-    name: '物理',
-    icon: 'i-heroicons-beaker',
-    categories: [
-      {
-        name: '基础物理',
-        items: [
-          { label: '力学', to: '/physics/mechanics' },
-          { label: '热学', to: '/physics/thermodynamics' },
-          { label: '声学', to: '/physics/acoustics' }
-        ]
-      },
-      {
-        name: '进阶物理',
-        items: [
-          { label: '电磁学', to: '/physics/electricity' },
-          { label: '光学', to: '/physics/optics' },
-          { label: '原子物理', to: '/physics/atomic' }
-        ]
-      },
-      {
-        name: '现代物理',
-        items: [
-          { label: '相对论', to: '/physics/relativity' },
-          { label: '量子力学', to: '/physics/quantum' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'chemistry',
-    name: '化学',
-    icon: 'i-heroicons-fire',
-    categories: [
-      {
-        name: '基础化学',
-        items: [
-          { label: '原子结构', to: '/chemistry/atomic-structure' },
-          { label: '化学键', to: '/chemistry/chemical-bonds' },
-          { label: '化学反应', to: '/chemistry/reactions' }
-        ]
-      },
-      {
-        name: '无机化学',
-        items: [
-          { label: '元素周期表', to: '/chemistry/periodic-table' },
-          { label: '酸碱理论', to: '/chemistry/acid-base' },
-          { label: '氧化还原', to: '/chemistry/redox' }
-        ]
-      },
-      {
-        name: '有机化学',
-        items: [
-          { label: '烃类', to: '/chemistry/hydrocarbons' },
-          { label: '官能团', to: '/chemistry/functional-groups' },
-          { label: '有机合成', to: '/chemistry/synthesis' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'biology',
-    name: '生物',
-    icon: 'i-heroicons-heart',
-    categories: [
-      {
-        name: '细胞生物学',
-        items: [
-          { label: '细胞结构', to: '/biology/cell-structure' },
-          { label: '细胞分裂', to: '/biology/cell-division' },
-          { label: '细胞代谢', to: '/biology/metabolism' }
-        ]
-      },
-      {
-        name: '遗传学',
-        items: [
-          { label: 'DNA与RNA', to: '/biology/dna-rna' },
-          { label: '基因表达', to: '/biology/gene-expression' },
-          { label: '遗传变异', to: '/biology/genetic-variation' }
-        ]
-      },
-      {
-        name: '生态学',
-        items: [
-          { label: '生态系统', to: '/biology/ecosystems' },
-          { label: '种群生态', to: '/biology/population' },
-          { label: '生物多样性', to: '/biology/biodiversity' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'mathematics',
-    name: '数学',
-    icon: 'i-heroicons-calculator',
-    categories: [
-      {
-        name: '代数',
-        items: [
-          { label: '线性代数', to: '/mathematics/linear-algebra' },
-          { label: '多项式', to: '/mathematics/polynomials' },
-          { label: '方程与不等式', to: '/mathematics/equations' }
-        ]
-      },
-      {
-        name: '几何',
-        items: [
-          { label: '平面几何', to: '/mathematics/plane-geometry' },
-          { label: '立体几何', to: '/mathematics/solid-geometry' },
-          { label: '解析几何', to: '/mathematics/analytic-geometry' }
-        ]
-      },
-      {
-        name: '微积分',
-        items: [
-          { label: '极限', to: '/mathematics/limits' },
-          { label: '导数', to: '/mathematics/derivatives' },
-          { label: '积分', to: '/mathematics/integrals' }
-        ]
-      }
-    ]
+// 切换学科菜单
+const toggleSubject = (subjectId: string) => {
+  if (activeSubject.value === subjectId) {
+    closeMenu()
+  } else {
+    activeSubject.value = subjectId
   }
-]
-
-// 生成下拉菜单项
-const getSubjectMenuItems = (subject: any): DropdownItem[][] => {
-  return subject.categories.map((category: any) => [
-    {
-      label: category.name,
-      slot: 'header',
-      disabled: true
-    },
-    ...category.items
-  ])
 }
+
+// 关闭菜单
+const closeMenu = () => {
+  activeSubject.value = null
+}
+
+// 处理移动端搜索
+const handleMobileSearch = () => {
+  isMobileMenuOpen.value = false
+  isSearchOpen.value = true
+}
+
+// 监听路由变化，自动设置激活的学科
+watch(() => route.path, (newPath) => {
+  const pathSegments = newPath.split('/').filter(Boolean)
+  if (pathSegments.length > 0) {
+    const subjectId = pathSegments[0]
+    if (subjects.value?.some(subject => subject.id === subjectId)) {
+      // 不自动展开菜单，只在用户主动点击时展开
+      // activeSubject.value = subjectId
+    }
+  }
+}, { immediate: true })
+
+// 点击外部区域关闭菜单
+onMounted(() => {
+  const handleClickOutside = (event: Event) => {
+    const target = event.target as Element
+    if (!target.closest('header')) {
+      closeMenu()
+    }
+  }
+
+  const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      closeMenu()
+    }
+  }
+
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleEscape)
+
+  onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleEscape)
+  })
+})
 </script>
+
+<style scoped>
+/* 隐藏滚动条但保持功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+</style>

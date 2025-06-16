@@ -173,8 +173,20 @@ const isSearchOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 const activeSubject = ref<string | null>(null)
 
-// 学科数据 - 使用 refresh 方法确保数据正确加载
-const { data: subjects, refresh: refreshSubjects } = await useAsyncData('subjects', () => getSubjects())
+// 学科数据 - 使用真正动态的数据加载
+const { data: subjects, refresh: refreshSubjects } = await useAsyncData('subjects', async () => {
+  const result = await getSubjects()
+  console.log('=== AppHeader Loading ===')
+  console.log('Loaded subjects from filesystem:', result)
+  return result
+})
+
+// 当内容发生变化时重新加载
+const { $router } = useNuxtApp()
+$router.afterEach(() => {
+  // 可以选择在路由变化时刷新数据
+  // refreshSubjects()
+})
 
 // 当前激活的学科
 const currentSubject = computed(() => {
@@ -228,9 +240,13 @@ onMounted(() => {
 // 调试信息（开发时可以查看）
 if (process.dev) {
   watchEffect(() => {
+    console.log('=== AppHeader Debug ===')
     console.log('Subjects loaded:', subjects.value)
     console.log('Active subject:', activeSubject.value)
     console.log('Current subject:', currentSubject.value)
+    if (currentSubject.value) {
+      console.log('Current subject categories:', currentSubject.value.categories)
+    }
   })
 }
 </script>

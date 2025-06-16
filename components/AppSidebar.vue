@@ -150,71 +150,19 @@ const isActive = (path: string) => {
 
 // 获取分类标题的辅助函数
 function getCategoryTitle(subject: string, category: string): string {
-  const titles: Record<string, Record<string, string>> = {
-    physics: {
-      mechanics: '力学',
-      electricity: '电磁学',
-      optics: '光学',
-      thermodynamics: '热学',
-      acoustics: '声学',
-      atomic: '原子物理',
-      relativity: '相对论',
-      quantum: '量子力学'
-    },
-    chemistry: {
-      'atomic-structure': '原子结构',
-      'chemical-bonds': '化学键',
-      'reactions': '化学反应',
-      'periodic-table': '元素周期表',
-      'acid-base': '酸碱理论',
-      'redox': '氧化还原',
-      'hydrocarbons': '烃类',
-      'functional-groups': '官能团',
-      'synthesis': '有机合成',
-      'inorganic': '无机化学',
-      'organic': '有机化学'
-    },
-    biology: {
-      'cell-structure': '细胞结构',
-      'cell-division': '细胞分裂',
-      'metabolism': '细胞代谢',
-      'dna-rna': 'DNA与RNA',
-      'gene-expression': '基因表达',
-      'genetic-variation': '遗传变异',
-      'ecosystems': '生态系统',
-      'population': '种群生态',
-      'biodiversity': '生物多样性',
-      'cell-biology': '细胞生物学',
-      'genetics': '遗传学',
-      'ecology': '生态学'
-    },
-    mathematics: {
-      'linear-algebra': '线性代数',
-      'polynomials': '多项式',
-      'equations': '方程与不等式',
-      'plane-geometry': '平面几何',
-      'solid-geometry': '立体几何',
-      'analytic-geometry': '解析几何',
-      'limits': '极限',
-      'derivatives': '导数',
-      'integrals': '积分',
-      'algebra': '代数',
-      'geometry': '几何',
-      'calculus': '微积分'
-    }
-  }
-
-  return titles[subject]?.[category] || category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  const { formatCategoryName } = useNavigation()
+  return formatCategoryName(category)
 }
 
 // 调试信息（开发时可以查看）
 if (process.dev) {
   watchEffect(() => {
-    console.log('Sidebar - Current path:', route.path)
-    console.log('Sidebar - Current category:', currentCategory.value)
-    console.log('Sidebar - Navigation items:', navigation.value)
-    console.log('Sidebar - Pending:', pending.value)
-    console.log('Sidebar - Error:', error.value)
+    console.log('=== Sidebar Debug ===')
+    console.log('Current path:', route.path)
+    console.log('Current category:', currentCategory.value)
+    console.log('Navigation items:', navigation.value)
+    console.log('Pending:', pending.value)
+    console.log('Error:', error.value)
   })
 }
 </script>

@@ -50,4 +50,13 @@ const { data: breadcrumbs } = await useAsyncData(
     watch: [() => route.path]
   }
 )
+
+// 调试信息
+if (process.dev) {
+  watchEffect(() => {
+    console.log('=== Breadcrumb Debug ===')
+    console.log('Route path:', route.path)
+    console.log('Breadcrumbs:', breadcrumbs.value)
+  })
+}
 </script>

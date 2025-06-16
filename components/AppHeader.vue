@@ -15,7 +15,7 @@
         </NuxtLink>
 
         <!-- 主导航菜单 -->
-        <div class="hidden md:flex items-center space-x-1">
+        <div v-if="subjects && subjects.length > 0" class="hidden md:flex items-center space-x-1">
           <div v-for="subject in subjects" :key="subject.id" class="relative">
             <button
               @click="toggleSubject(subject.id)"
@@ -88,7 +88,7 @@
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div
-        v-if="activeSubject && currentSubject"
+        v-if="activeSubject && currentSubject && currentSubject.categories.length > 0"
         class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
       >
         <div class="stem-container">
@@ -129,7 +129,7 @@
     </Transition>
 
     <!-- 搜索模态框 -->
-    <AppSearch v-model="isSearchOpen" />
+    <AppSearch v-if="isSearchOpen" v-model="isSearchOpen" />
 
     <!-- 移动端菜单 -->
     <USlideover v-model="isMobileMenuOpen">
@@ -144,11 +144,19 @@
             @click="isMobileMenuOpen = false"
           />
         </div>
-        <AppMobileNav
-          :subjects="subjects"
-          @close="isMobileMenuOpen = false"
-          @search="handleMobileSearch"
-        />
+        <!-- 简化的移动端菜单 -->
+        <div class="space-y-2">
+          <NuxtLink
+            v-for="subject in subjects"
+            :key="subject.id"
+            :to="subject.path"
+            @click="isMobileMenuOpen = false"
+            class="flex items-center space-x-3 p-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <UIcon :name="subject.icon" class="w-5 h-5" />
+            <span>{{ subject.title }}</span>
+          </NuxtLink>
+        </div>
       </div>
     </USlideover>
   </header>
@@ -165,12 +173,13 @@ const isSearchOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 const activeSubject = ref<string | null>(null)
 
-// 学科数据
-const { data: subjects } = await useAsyncData('subjects', () => getSubjects())
+// 学科数据 - 使用 refresh 方法确保数据正确加载
+const { data: subjects, refresh: refreshSubjects } = await useAsyncData('subjects', () => getSubjects())
 
 // 当前激活的学科
 const currentSubject = computed(() => {
-  return subjects.value?.find(subject => subject.id === activeSubject.value)
+  if (!subjects.value || !activeSubject.value) return null
+  return subjects.value.find(subject => subject.id === activeSubject.value) || null
 })
 
 // 主题切换
@@ -191,24 +200,6 @@ const toggleSubject = (subjectId: string) => {
 const closeMenu = () => {
   activeSubject.value = null
 }
-
-// 处理移动端搜索
-const handleMobileSearch = () => {
-  isMobileMenuOpen.value = false
-  isSearchOpen.value = true
-}
-
-// 监听路由变化，自动设置激活的学科
-watch(() => route.path, (newPath) => {
-  const pathSegments = newPath.split('/').filter(Boolean)
-  if (pathSegments.length > 0) {
-    const subjectId = pathSegments[0]
-    if (subjects.value?.some(subject => subject.id === subjectId)) {
-      // 不自动展开菜单，只在用户主动点击时展开
-      // activeSubject.value = subjectId
-    }
-  }
-}, { immediate: true })
 
 // 点击外部区域关闭菜单
 onMounted(() => {
@@ -233,6 +224,15 @@ onMounted(() => {
     document.removeEventListener('keydown', handleEscape)
   })
 })
+
+// 调试信息（开发时可以查看）
+if (process.dev) {
+  watchEffect(() => {
+    console.log('Subjects loaded:', subjects.value)
+    console.log('Active subject:', activeSubject.value)
+    console.log('Current subject:', currentSubject.value)
+  })
+}
 </script>
 
 <style scoped>

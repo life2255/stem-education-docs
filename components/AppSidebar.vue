@@ -15,7 +15,7 @@
       </div>
 
       <!-- 文章列表 -->
-      <div v-if="navigation.length > 0" class="space-y-2">
+      <div v-if="navigation && navigation.length > 0" class="space-y-2">
         <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
           文章列表
         </h4>
@@ -70,7 +70,7 @@
       </div>
 
       <!-- 分类信息卡片 -->
-      <div v-if="currentCategory" class="mt-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+      <div v-if="currentCategory && navigation && navigation.length > 0" class="mt-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">分类信息</h4>
         <div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
           <div class="flex justify-between">
@@ -96,7 +96,7 @@ const route = useRoute()
 const { getCategoryNavigation } = useNavigation()
 
 // 获取导航数据
-const { data: navigation } = await useAsyncData(
+const { data: navigation, pending, error } = await useAsyncData(
   `sidebar-navigation-${route.path}`,
   async () => {
     const pathSegments = route.path.split('/').filter(Boolean)
@@ -150,7 +150,6 @@ const isActive = (path: string) => {
 
 // 获取分类标题的辅助函数
 function getCategoryTitle(subject: string, category: string): string {
-  // 这里可以扩展映射表，或者从API获取
   const titles: Record<string, Record<string, string>> = {
     physics: {
       mechanics: '力学',
@@ -206,5 +205,16 @@ function getCategoryTitle(subject: string, category: string): string {
   }
 
   return titles[subject]?.[category] || category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// 调试信息（开发时可以查看）
+if (process.dev) {
+  watchEffect(() => {
+    console.log('Sidebar - Current path:', route.path)
+    console.log('Sidebar - Current category:', currentCategory.value)
+    console.log('Sidebar - Navigation items:', navigation.value)
+    console.log('Sidebar - Pending:', pending.value)
+    console.log('Sidebar - Error:', error.value)
+  })
 }
 </script>

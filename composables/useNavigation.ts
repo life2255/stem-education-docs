@@ -18,7 +18,6 @@ export interface Category {
   id: string
   title: string
   path: string
-  items?: NavigationItem[]
 }
 
 // 学科图标映射
@@ -27,7 +26,6 @@ const SUBJECT_ICONS: Record<string, string> = {
   chemistry: 'i-heroicons-beaker',
   biology: 'i-heroicons-heart',
   mathematics: 'i-heroicons-calculator',
-  // 可以继续添加更多学科
 }
 
 // 学科中文名映射
@@ -39,22 +37,11 @@ const SUBJECT_NAMES: Record<string, string> = {
 }
 
 export const useNavigation = () => {
-  // 获取所有导航数据
-  const getNavigation = async () => {
-    try {
-      // 获取所有内容页面
-      const navigation = await fetchContentNavigation()
-      return navigation || []
-    } catch (error) {
-      console.error('Failed to fetch navigation:', error)
-      return []
-    }
-  }
-
   // 获取学科列表（一级菜单）
   const getSubjects = async (): Promise<Subject[]> => {
     try {
-      const navigation = await getNavigation()
+      // 获取完整的导航树
+      const navigation = await fetchContentNavigation()
       const subjects: Subject[] = []
 
       for (const item of navigation) {
@@ -87,37 +74,55 @@ export const useNavigation = () => {
   // 获取学科的分类列表（二级菜单）
   const getSubjectCategories = async (subjectId: string): Promise<Category[]> => {
     try {
-      const navigation = await fetchContentNavigation(queryContent().where({ _path: { $contains: subjectId } }))
+      // 查询特定学科下的所有内容
+      const contentList = await queryContent()
+        .where({ _path: { $regex: `^/${subjectId}/[^/]+/?$` } })
+        .only(['_path', 'title'])
+        .find()
+
       const categories: Category[] = []
       const categoryPaths = new Set<string>()
 
-      for (const item of navigation) {
+      for (const item of contentList) {
         if (item._path) {
           const pathSegments = item._path.split('/').filter(Boolean)
-          if (pathSegments.length >= 2 && pathSegments[0] === subjectId) {
+          if (pathSegments.length === 2 && pathSegments[0] === subjectId) {
             const categoryId = pathSegments[1]
             const categoryPath = `/${subjectId}/${categoryId}`
 
             if (!categoryPaths.has(categoryPath)) {
               categoryPaths.add(categoryPath)
 
-              // 尝试获取分类的标题
-              let categoryTitle = categoryId
-              try {
-                const categoryData = await queryContent(categoryPath).findOne()
-                if (categoryData?.title) {
-                  categoryTitle = categoryData.title
-                }
-              } catch {
-                // 如果没有找到分类页面，使用目录名
-                categoryTitle = categoryId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-              }
+              // 使用文档的标题，如果没有则格式化目录名
+              let categoryTitle = item.title || categoryId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
               categories.push({
                 id: categoryId,
                 title: categoryTitle,
                 path: categoryPath
               })
+            }
+          }
+        }
+      }
+
+      // 如果没有找到分类内容，尝试查找目录结构
+      if (categories.length === 0) {
+        const navigation = await fetchContentNavigation()
+        const subjectNav = navigation.find(item => item._path === `/${subjectId}`)
+
+        if (subjectNav && subjectNav.children) {
+          for (const child of subjectNav.children) {
+            if (child._path) {
+              const pathSegments = child._path.split('/').filter(Boolean)
+              if (pathSegments.length === 2) {
+                const categoryId = pathSegments[1]
+                categories.push({
+                  id: categoryId,
+                  title: child.title || categoryId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  path: child._path
+                })
+              }
             }
           }
         }
@@ -133,21 +138,21 @@ export const useNavigation = () => {
   // 获取当前页面的分类导航（用于侧边栏）
   const getCategoryNavigation = async (categoryPath: string): Promise<NavigationItem[]> => {
     try {
-      const navigation = await fetchContentNavigation(queryContent().where({ _path: { $contains: categoryPath } }))
+      // 查询当前分类下的所有文章
+      const articles = await queryContent()
+        .where({ _path: { $regex: `^${categoryPath}/.*` } })
+        .only(['_path', 'title', 'difficulty'])
+        .sort({ title: 1 })
+        .find()
 
-      // 过滤出属于当前分类的文章
-      const items = navigation.filter(item =>
-        item._path &&
-        item._path.startsWith(categoryPath) &&
-        item._path !== categoryPath && // 排除分类首页
-        item.title
-      )
-
-      return items.map(item => ({
-        title: item.title || '',
-        _path: item._path || '',
-        icon: 'i-heroicons-document-text'
-      }))
+      return articles
+        .filter(item => item._path !== categoryPath) // 排除分类首页
+        .map(item => ({
+          title: item.title || '',
+          _path: item._path || '',
+          icon: 'i-heroicons-document-text',
+          difficulty: item.difficulty
+        }))
     } catch (error) {
       console.error(`Failed to get navigation for ${categoryPath}:`, error)
       return []
@@ -174,7 +179,7 @@ export const useNavigation = () => {
       try {
         const categoryData = await queryContent(categoryPath).findOne()
         breadcrumbs.push({
-          title: categoryData?.title || categoryId,
+          title: categoryData?.title || categoryId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
           _path: categoryPath
         })
       } catch {
@@ -189,7 +194,6 @@ export const useNavigation = () => {
   }
 
   return {
-    getNavigation,
     getSubjects,
     getSubjectCategories,
     getCategoryNavigation,

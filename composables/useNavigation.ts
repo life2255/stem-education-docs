@@ -18,6 +18,7 @@ export interface Category {
   id: string
   title: string
   path: string
+  icon: string  // 添加 icon 字段
 }
 
 export const useNavigation = () => {
@@ -47,6 +48,56 @@ export const useNavigation = () => {
     return 'i-heroicons-folder'
   }
 
+  // 根据分类ID获取默认图标
+  const getCategoryIcon = (categoryId: string): string => {
+    const iconMap: Record<string, string> = {
+      // 物理学分类
+      mechanics: 'i-heroicons-cog-6-tooth',
+      thermodynamics: 'i-heroicons-fire',
+      electricity: 'i-heroicons-bolt',
+      magnetism: 'i-heroicons-magnet',
+      optics: 'i-heroicons-eye',
+      quantum: 'i-heroicons-atom',
+      nuclear: 'i-heroicons-radioactive',
+
+      // 化学分类
+      organic: 'i-heroicons-beaker',
+      inorganic: 'i-heroicons-cube',
+      analytical: 'i-heroicons-magnifying-glass',
+      physical: 'i-heroicons-scale',
+
+      // 生物学分类
+      cellular: 'i-heroicons-squares-2x2',
+      molecular: 'i-heroicons-dna',
+      evolution: 'i-heroicons-arrow-trending-up',
+      ecology: 'i-heroicons-globe-alt',
+
+      // 数学分类
+      algebra: 'i-heroicons-variable',
+      calculus: 'i-heroicons-chart-line',
+      geometry: 'i-heroicons-square-3-stack-3d',
+      statistics: 'i-heroicons-chart-bar',
+
+      // 通用分类
+      fundamentals: 'i-heroicons-academic-cap',
+      basics: 'i-heroicons-bookmark',
+      advanced: 'i-heroicons-star',
+      applications: 'i-heroicons-wrench-screwdriver',
+      experiments: 'i-heroicons-beaker',
+      theory: 'i-heroicons-book-open'
+    }
+
+    // 查找匹配的图标
+    for (const [key, icon] of Object.entries(iconMap)) {
+      if (categoryId.toLowerCase().includes(key)) {
+        return icon
+      }
+    }
+
+    // 默认图标
+    return 'i-heroicons-folder'
+  }
+
   // 智能格式化文件夹名称为显示标题
   const formatTitle = (folderName: string): string => {
     // 处理常见的英文学科名称
@@ -59,7 +110,33 @@ export const useNavigation = () => {
       computer: '计算机科学',
       engineering: '工程学',
       science: '科学',
-      // 可以根据需要扩展
+
+      // 物理学分类
+      mechanics: '力学',
+      thermodynamics: '热力学',
+      electricity: '电学',
+      magnetism: '磁学',
+      optics: '光学',
+      quantum: '量子物理',
+      nuclear: '核物理',
+
+      // 化学分类
+      organic: '有机化学',
+      inorganic: '无机化学',
+      analytical: '分析化学',
+      physical: '物理化学',
+
+      // 生物学分类
+      cellular: '细胞生物学',
+      molecular: '分子生物学',
+      evolution: '进化生物学',
+      ecology: '生态学',
+
+      // 数学分类
+      algebra: '代数',
+      calculus: '微积分',
+      geometry: '几何',
+      statistics: '统计学'
     }
 
     const lowerName = folderName.toLowerCase()
@@ -73,7 +150,7 @@ export const useNavigation = () => {
       .replace(/\b\w/g, l => l.toUpperCase())  // 首字母大写
   }
 
-  // 获取学科列表（一级菜单）- 真正动态读取
+  // 获取学科列表（一级菜单）
   const getSubjects = async (): Promise<Subject[]> => {
     try {
       // 获取完整的导航树
@@ -174,7 +251,8 @@ export const useNavigation = () => {
           categories.push({
             id: categoryId,
             title: categoryTitle,
-            path: child._path
+            path: child._path,
+            icon: getCategoryIcon(categoryId)  // 添加图标
           })
         }
       }

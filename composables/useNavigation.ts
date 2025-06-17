@@ -133,23 +133,33 @@ export const useNavigation = () => {
       return categories
     }
 
+    console.log(`Processing categories for ${subjectId}:`, subjectItem.children)
+
     for (const child of subjectItem.children) {
-      if (child._path && child.children && child.children.length > 0) {
+      // 修复：只要是文件夹路径就识别为分类，不要求必须有子内容
+      if (child._path) {
         const pathSegments = child._path.split('/').filter(Boolean)
         if (pathSegments.length === 2 && pathSegments[0] === subjectId) {
+          // 判断是否为文件夹（不是.md文件）
           const categoryId = pathSegments[1]
-          const categoryTitle = await getItemTitle(child._path, categoryId)
+          if (!categoryId.endsWith('.md')) {
+            console.log(`Found category: ${categoryId} at ${child._path}`)
+            console.log(`Category has children:`, child.children?.length || 0)
 
-          categories.push({
-            id: categoryId,
-            title: categoryTitle,
-            path: child._path,
-            icon: getCategoryIcon(categoryId)
-          })
+            const categoryTitle = await getItemTitle(child._path, categoryId)
+
+            categories.push({
+              id: categoryId,
+              title: categoryTitle,
+              path: child._path,
+              icon: getCategoryIcon(categoryId)
+            })
+          }
         }
       }
     }
 
+    console.log(`Final categories for ${subjectId}:`, categories)
     return categories
   }
 

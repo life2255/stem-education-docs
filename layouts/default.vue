@@ -23,7 +23,7 @@
     <AppFooter />
 
     <!-- 搜索弹窗 -->
-    <AppSearch v-model="isSearchOpen" />
+    <AppSearch v-if="isSearchOpen" v-model="isSearchOpen" />
   </div>
 </template>
 

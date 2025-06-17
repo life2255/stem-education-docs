@@ -4,6 +4,8 @@ export interface NavigationItem {
   _path: string
   icon?: string
   difficulty?: string
+  children?: NavigationItem[]
+  isDirectory: boolean
 }
 
 export interface Subject {
@@ -18,13 +20,12 @@ export interface Category {
   id: string
   title: string
   path: string
-  icon: string  // 添加 icon 字段
+  icon: string
 }
 
 export const useNavigation = () => {
   // 根据学科ID获取默认图标
   const getDefaultIcon = (subjectId: string): string => {
-    // 根据文件夹名称智能推测图标
     const iconMap: Record<string, string> = {
       physics: 'i-heroicons-bolt',
       chemistry: 'i-heroicons-beaker',
@@ -34,17 +35,14 @@ export const useNavigation = () => {
       computer: 'i-heroicons-computer-desktop',
       engineering: 'i-heroicons-cog-6-tooth',
       science: 'i-heroicons-academic-cap',
-      // 可以根据需要扩展更多映射
     }
 
-    // 查找匹配的图标
     for (const [key, icon] of Object.entries(iconMap)) {
       if (subjectId.toLowerCase().includes(key)) {
         return icon
       }
     }
 
-    // 默认图标
     return 'i-heroicons-folder'
   }
 
@@ -87,20 +85,17 @@ export const useNavigation = () => {
       theory: 'i-heroicons-book-open'
     }
 
-    // 查找匹配的图标
     for (const [key, icon] of Object.entries(iconMap)) {
       if (categoryId.toLowerCase().includes(key)) {
         return icon
       }
     }
 
-    // 默认图标
     return 'i-heroicons-folder'
   }
 
   // 智能格式化文件夹名称为显示标题
   const formatTitle = (folderName: string): string => {
-    // 处理常见的英文学科名称
     const subjectMap: Record<string, string> = {
       physics: '物理学',
       chemistry: '化学',
@@ -136,7 +131,16 @@ export const useNavigation = () => {
       algebra: '代数',
       calculus: '微积分',
       geometry: '几何',
-      statistics: '统计学'
+      statistics: '统计学',
+
+      // 具体主题
+      kinematics: '运动学',
+      dynamics: '动力学',
+      energy: '能量',
+      waves: '波动',
+      'ohms-law': '欧姆定律',
+      circuits: '电路',
+      'electric-field': '电场'
     }
 
     const lowerName = folderName.toLowerCase()
@@ -146,35 +150,30 @@ export const useNavigation = () => {
 
     // 如果没有预定义映射，格式化文件夹名称
     return folderName
-      .replace(/[-_]/g, ' ')  // 替换连字符和下划线为空格
-      .replace(/\b\w/g, l => l.toUpperCase())  // 首字母大写
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase())
   }
 
   // 获取学科列表（一级菜单）
   const getSubjects = async (): Promise<Subject[]> => {
     try {
-      // 获取完整的导航树
       const navigation = await fetchContentNavigation()
       const subjects: Subject[] = []
 
       console.log('=== Navigation Debug ===')
       console.log('Full navigation tree:', navigation)
 
-      // 遍历 content/ 下的所有顶级文件夹
       for (const item of navigation) {
         if (item._path && item._path !== '/' && item._path.startsWith('/')) {
           const pathSegments = item._path.split('/').filter(Boolean)
 
-          // 只处理顶级文件夹（学科）
           if (pathSegments.length === 1) {
             const subjectId = pathSegments[0]
 
             console.log(`Processing subject: ${subjectId}`)
 
-            // 尝试从该学科的 _dir.yml 或 index.md 获取标题
             let subjectTitle = item.title
 
-            // 如果导航树中没有标题，尝试查询 index 页面
             if (!subjectTitle) {
               try {
                 const subjectIndex = await queryContent(`/${subjectId}`).findOne()
@@ -184,14 +183,12 @@ export const useNavigation = () => {
               }
             }
 
-            // 如果还是没有标题，使用智能格式化
             if (!subjectTitle) {
               subjectTitle = formatTitle(subjectId)
             }
 
             console.log(`Subject title: ${subjectTitle}`)
 
-            // 获取该学科的分类
             const categories = await getSubjectCategoriesFromNav(item, subjectId)
 
             subjects.push({
@@ -224,16 +221,13 @@ export const useNavigation = () => {
     console.log(`Processing categories for ${subjectId}:`, subjectItem.children)
 
     for (const child of subjectItem.children) {
-      // 只有包含子内容的文件夹才算分类
       if (child._path && child.children && child.children.length > 0) {
         const pathSegments = child._path.split('/').filter(Boolean)
         if (pathSegments.length === 2 && pathSegments[0] === subjectId) {
           const categoryId = pathSegments[1]
 
-          // 获取分类标题
           let categoryTitle = child.title
 
-          // 如果没有标题，尝试查询分类的 index 或 _dir.yml
           if (!categoryTitle) {
             try {
               const categoryIndex = await queryContent(child._path).findOne()
@@ -243,7 +237,6 @@ export const useNavigation = () => {
             }
           }
 
-          // 最后使用格式化的文件夹名
           if (!categoryTitle) {
             categoryTitle = formatTitle(categoryId)
           }
@@ -252,7 +245,7 @@ export const useNavigation = () => {
             id: categoryId,
             title: categoryTitle,
             path: child._path,
-            icon: getCategoryIcon(categoryId)  // 添加图标
+            icon: getCategoryIcon(categoryId)
           })
         }
       }
@@ -262,13 +255,48 @@ export const useNavigation = () => {
     return categories
   }
 
-  // 获取当前页面的分类导航（用于侧边栏）
+  // 递归构建导航项
+  const buildNavigationItem = (node: any): NavigationItem => {
+    const pathSegments = node._path?.split('/').filter(Boolean) || []
+    const isDirectory = !!(node.children && node.children.length > 0)
+
+    // 获取标题
+    let title = node.title
+    if (!title && pathSegments.length > 0) {
+      const lastSegment = pathSegments[pathSegments.length - 1]
+      // 如果是 .md 文件，去掉扩展名
+      const cleanName = lastSegment.replace(/\.md$/, '')
+      title = formatTitle(cleanName)
+    }
+
+    const item: NavigationItem = {
+      title: title || 'Untitled',
+      _path: node._path || '',
+      isDirectory,
+      difficulty: node.difficulty
+    }
+
+    // 如果有子节点，递归处理
+    if (node.children && node.children.length > 0) {
+      item.children = node.children
+        .map((child: any) => buildNavigationItem(child))
+        .sort((a: NavigationItem, b: NavigationItem) => {
+          // 目录排在前面，文件排在后面
+          if (a.isDirectory && !b.isDirectory) return -1
+          if (!a.isDirectory && b.isDirectory) return 1
+          return a.title.localeCompare(b.title)
+        })
+    }
+
+    return item
+  }
+
+  // 获取分类的完整导航结构（支持嵌套）
   const getCategoryNavigation = async (categoryPath: string): Promise<NavigationItem[]> => {
     try {
-      console.log('=== Sidebar Navigation Debug ===')
+      console.log('=== Enhanced Sidebar Navigation Debug ===')
       console.log('Getting category navigation for:', categoryPath)
 
-      // 获取完整导航树
       const navigation = await fetchContentNavigation()
 
       // 递归查找目标分类节点
@@ -289,26 +317,17 @@ export const useNavigation = () => {
       console.log('Found category node:', categoryNode)
 
       if (categoryNode && categoryNode.children) {
-        const articles = categoryNode.children
-          .filter((item: any) => {
-            // 只要文章文件，不要子文件夹
-            const isFile = item._path && !item.children
-            console.log(`Item ${item._path}: isFile=${isFile}`)
-            return isFile
-          })
-          .map((item: any) => {
-            const title = item.title || item._path?.split('/').pop()?.replace(/\.md$/, '') || ''
-            console.log(`Article: ${item._path} -> ${title}`)
-            return {
-              title,
-              _path: item._path || '',
-              icon: 'i-heroicons-document-text',
-              difficulty: item.difficulty
-            }
+        const items = categoryNode.children
+          .map((child: any) => buildNavigationItem(child))
+          .sort((a: NavigationItem, b: NavigationItem) => {
+            // 目录排在前面，文件排在后面
+            if (a.isDirectory && !b.isDirectory) return -1
+            if (!a.isDirectory && b.isDirectory) return 1
+            return a.title.localeCompare(b.title)
           })
 
-        console.log('Final articles:', articles)
-        return articles
+        console.log('Final navigation items:', items)
+        return items
       }
 
       console.log('No category node or children found')
@@ -326,9 +345,8 @@ export const useNavigation = () => {
 
     if (segments.length >= 1) {
       const subjectId = segments[0]
-
-      // 尝试获取学科的真实标题
       let subjectTitle = formatTitle(subjectId)
+
       try {
         const subjectData = await queryContent(`/${subjectId}`).findOne()
         if (subjectData?.title) {
@@ -347,9 +365,8 @@ export const useNavigation = () => {
     if (segments.length >= 2) {
       const categoryId = segments[1]
       const categoryPath = `/${segments[0]}/${categoryId}`
-
-      // 尝试获取分类的真实标题
       let categoryTitle = formatTitle(categoryId)
+
       try {
         const categoryData = await queryContent(categoryPath).findOne()
         if (categoryData?.title) {

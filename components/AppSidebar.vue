@@ -41,12 +41,9 @@
     <!-- 分类页面：显示嵌套文件和目录结构 -->
     <div v-else-if="navigation && navigation.length > 0">
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
           {{ currentCategory?.title || '内容' }}
         </h3>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ totalItemsCount }} 项内容
-        </p>
       </div>
 
       <nav class="space-y-1">
@@ -56,6 +53,7 @@
           :item="item"
           :current-path="route.path"
           :expanded-items="expandedItems"
+          :level="0"
           @toggle="toggleExpanded"
         />
       </nav>
@@ -142,15 +140,15 @@ const { data: navigation, pending, error } = await useAsyncData(
   }
 )
 
-// 计算总项目数量
-const totalItemsCount = computed(() => {
-  const countItems = (items: NavigationItem[]): number => {
-    return items.reduce((count, item) => {
-      return count + 1 + (item.children ? countItems(item.children) : 0)
-    }, 0)
-  }
-  return navigation.value ? countItems(navigation.value) : 0
-})
+// 计算总项目数量 - 移除此功能
+// const totalItemsCount = computed(() => {
+//   const countItems = (items: NavigationItem[]): number => {
+//     return items.reduce((count, item) => {
+//       return count + 1 + (item.children ? countItems(item.children) : 0)
+//     }, 0)
+//   }
+//   return navigation.value ? countItems(navigation.value) : 0
+// })
 
 // 切换展开状态
 const toggleExpanded = (path: string) => {

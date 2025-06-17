@@ -15,10 +15,6 @@
         :name="isExpanded ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-right'"
         class="mr-2 h-3 w-3 flex-shrink-0 text-gray-400 transition-transform duration-150"
       />
-      <UIcon
-        name="i-heroicons-folder"
-        class="mr-2 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-gray-500"
-      />
       <span class="font-medium">{{ item.title }}</span>
     </div>
 
@@ -35,7 +31,7 @@
       ]"
     >
       <div class="flex items-center min-w-0 flex-1">
-        <!-- 文件缩进（不使用图标） -->
+        <!-- 文件不使用任何图标，直接显示标题 -->
         <span :class="['truncate', level > 0 ? 'ml-7' : '']">{{ item.title }}</span>
       </div>
 
@@ -70,7 +66,7 @@
           :current-path="currentPath"
           :expanded-items="expandedItems"
           :level="level + 1"
-          @toggle="$emit('toggle', $event)"
+          @toggle="emit('toggle', $event)"
         />
       </div>
     </Transition>

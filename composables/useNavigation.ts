@@ -2,7 +2,6 @@
 export interface NavigationItem {
   title: string
   _path: string
-  icon?: string
   difficulty?: string
   children?: NavigationItem[]
   isDirectory: boolean
@@ -31,10 +30,8 @@ export const useNavigation = () => {
       chemistry: 'i-heroicons-beaker',
       biology: 'i-heroicons-heart',
       mathematics: 'i-heroicons-calculator',
-      math: 'i-heroicons-calculator',
       computer: 'i-heroicons-computer-desktop',
       engineering: 'i-heroicons-cog-6-tooth',
-      science: 'i-heroicons-academic-cap',
     }
 
     for (const [key, icon] of Object.entries(iconMap)) {
@@ -49,40 +46,11 @@ export const useNavigation = () => {
   // 根据分类ID获取默认图标
   const getCategoryIcon = (categoryId: string): string => {
     const iconMap: Record<string, string> = {
-      // 物理学分类
       mechanics: 'i-heroicons-cog-6-tooth',
-      thermodynamics: 'i-heroicons-fire',
       electricity: 'i-heroicons-bolt',
-      magnetism: 'i-heroicons-magnet',
+      thermodynamics: 'i-heroicons-fire',
       optics: 'i-heroicons-eye',
       quantum: 'i-heroicons-atom',
-      nuclear: 'i-heroicons-radioactive',
-
-      // 化学分类
-      organic: 'i-heroicons-beaker',
-      inorganic: 'i-heroicons-cube',
-      analytical: 'i-heroicons-magnifying-glass',
-      physical: 'i-heroicons-scale',
-
-      // 生物学分类
-      cellular: 'i-heroicons-squares-2x2',
-      molecular: 'i-heroicons-dna',
-      evolution: 'i-heroicons-arrow-trending-up',
-      ecology: 'i-heroicons-globe-alt',
-
-      // 数学分类
-      algebra: 'i-heroicons-variable',
-      calculus: 'i-heroicons-chart-line',
-      geometry: 'i-heroicons-square-3-stack-3d',
-      statistics: 'i-heroicons-chart-bar',
-
-      // 通用分类
-      fundamentals: 'i-heroicons-academic-cap',
-      basics: 'i-heroicons-bookmark',
-      advanced: 'i-heroicons-star',
-      applications: 'i-heroicons-wrench-screwdriver',
-      experiments: 'i-heroicons-beaker',
-      theory: 'i-heroicons-book-open'
     }
 
     for (const [key, icon] of Object.entries(iconMap)) {
@@ -94,64 +62,34 @@ export const useNavigation = () => {
     return 'i-heroicons-folder'
   }
 
-  // 智能格式化文件夹名称为显示标题
-  const formatTitle = (folderName: string): string => {
-    const subjectMap: Record<string, string> = {
-      physics: '物理学',
-      chemistry: '化学',
-      biology: '生物学',
-      mathematics: '数学',
-      math: '数学',
-      computer: '计算机科学',
-      engineering: '工程学',
-      science: '科学',
+  // 简单的标题格式化：去掉.md，替换连字符
+  const formatTitle = (name: string): string => {
+    return name
+      .replace(/\.md$/, '')  // 移除.md扩展名
+      .replace(/[-_]/g, ' ') // 替换连字符和下划线为空格
+  }
 
-      // 物理学分类
-      mechanics: '力学',
-      thermodynamics: '热力学',
-      electricity: '电学',
-      magnetism: '磁学',
-      optics: '光学',
-      quantum: '量子物理',
-      nuclear: '核物理',
+  // 专门读取 _dir.yml 文件的函数
+  const readDirYml = async (dirPath: string): Promise<string | null> => {
+    try {
+      const dirYmlPath = `${dirPath}/_dir`
+      const dirData = await queryContent(dirYmlPath).findOne()
+      return dirData?.title || null
+    } catch (e) {
+      return null
+    }
+  }
 
-      // 化学分类
-      organic: '有机化学',
-      inorganic: '无机化学',
-      analytical: '分析化学',
-      physical: '物理化学',
-
-      // 生物学分类
-      cellular: '细胞生物学',
-      molecular: '分子生物学',
-      evolution: '进化生物学',
-      ecology: '生态学',
-
-      // 数学分类
-      algebra: '代数',
-      calculus: '微积分',
-      geometry: '几何',
-      statistics: '统计学',
-
-      // 具体主题
-      kinematics: '运动学',
-      dynamics: '动力学',
-      energy: '能量',
-      waves: '波动',
-      'ohms-law': '欧姆定律',
-      circuits: '电路',
-      'electric-field': '电场'
+  // 获取标题：优先 _dir.yml，其次格式化文件名
+  const getItemTitle = async (itemPath: string, itemName: string): Promise<string> => {
+    // 1. 尝试读取 _dir.yml
+    const dirTitle = await readDirYml(itemPath)
+    if (dirTitle) {
+      return dirTitle
     }
 
-    const lowerName = folderName.toLowerCase()
-    if (subjectMap[lowerName]) {
-      return subjectMap[lowerName]
-    }
-
-    // 如果没有预定义映射，格式化文件夹名称
-    return folderName
-      .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase())
+    // 2. 使用文件名格式化
+    return formatTitle(itemName)
   }
 
   // 获取学科列表（一级菜单）
@@ -160,35 +98,13 @@ export const useNavigation = () => {
       const navigation = await fetchContentNavigation()
       const subjects: Subject[] = []
 
-      console.log('=== Navigation Debug ===')
-      console.log('Full navigation tree:', navigation)
-
       for (const item of navigation) {
         if (item._path && item._path !== '/' && item._path.startsWith('/')) {
           const pathSegments = item._path.split('/').filter(Boolean)
 
           if (pathSegments.length === 1) {
             const subjectId = pathSegments[0]
-
-            console.log(`Processing subject: ${subjectId}`)
-
-            let subjectTitle = item.title
-
-            if (!subjectTitle) {
-              try {
-                const subjectIndex = await queryContent(`/${subjectId}`).findOne()
-                subjectTitle = subjectIndex?.title
-              } catch (e) {
-                console.log(`No index found for ${subjectId}`)
-              }
-            }
-
-            if (!subjectTitle) {
-              subjectTitle = formatTitle(subjectId)
-            }
-
-            console.log(`Subject title: ${subjectTitle}`)
-
+            const subjectTitle = await getItemTitle(item._path, subjectId)
             const categories = await getSubjectCategoriesFromNav(item, subjectId)
 
             subjects.push({
@@ -202,7 +118,6 @@ export const useNavigation = () => {
         }
       }
 
-      console.log('Final subjects:', subjects)
       return subjects.sort((a, b) => a.title.localeCompare(b.title))
     } catch (error) {
       console.error('Failed to get subjects:', error)
@@ -218,28 +133,12 @@ export const useNavigation = () => {
       return categories
     }
 
-    console.log(`Processing categories for ${subjectId}:`, subjectItem.children)
-
     for (const child of subjectItem.children) {
       if (child._path && child.children && child.children.length > 0) {
         const pathSegments = child._path.split('/').filter(Boolean)
         if (pathSegments.length === 2 && pathSegments[0] === subjectId) {
           const categoryId = pathSegments[1]
-
-          let categoryTitle = child.title
-
-          if (!categoryTitle) {
-            try {
-              const categoryIndex = await queryContent(child._path).findOne()
-              categoryTitle = categoryIndex?.title
-            } catch (e) {
-              console.log(`No index found for category ${child._path}`)
-            }
-          }
-
-          if (!categoryTitle) {
-            categoryTitle = formatTitle(categoryId)
-          }
+          const categoryTitle = await getItemTitle(child._path, categoryId)
 
           categories.push({
             id: categoryId,
@@ -251,26 +150,32 @@ export const useNavigation = () => {
       }
     }
 
-    console.log(`Categories for ${subjectId}:`, categories)
     return categories
   }
 
   // 递归构建导航项
-  const buildNavigationItem = (node: any): NavigationItem => {
+  const buildNavigationItem = async (node: any): Promise<NavigationItem> => {
     const pathSegments = node._path?.split('/').filter(Boolean) || []
     const isDirectory = !!(node.children && node.children.length > 0)
 
+    // 获取文件/文件夹名称
+    let itemName = 'Untitled'
+    if (pathSegments.length > 0) {
+      itemName = pathSegments[pathSegments.length - 1]
+    }
+
     // 获取标题
-    let title = node.title
-    if (!title && pathSegments.length > 0) {
-      const lastSegment = pathSegments[pathSegments.length - 1]
-      // 如果是 .md 文件，去掉扩展名
-      const cleanName = lastSegment.replace(/\.md$/, '')
-      title = formatTitle(cleanName)
+    let title: string
+    if (isDirectory) {
+      // 目录：尝试读取 _dir.yml
+      title = await getItemTitle(node._path, itemName)
+    } else {
+      // 文件：直接格式化文件名
+      title = formatTitle(itemName)
     }
 
     const item: NavigationItem = {
-      title: title || 'Untitled',
+      title,
       _path: node._path || '',
       isDirectory,
       difficulty: node.difficulty
@@ -278,14 +183,15 @@ export const useNavigation = () => {
 
     // 如果有子节点，递归处理
     if (node.children && node.children.length > 0) {
-      item.children = node.children
-        .map((child: any) => buildNavigationItem(child))
-        .sort((a: NavigationItem, b: NavigationItem) => {
-          // 目录排在前面，文件排在后面
-          if (a.isDirectory && !b.isDirectory) return -1
-          if (!a.isDirectory && b.isDirectory) return 1
-          return a.title.localeCompare(b.title)
-        })
+      const childPromises = node.children.map((child: any) => buildNavigationItem(child))
+      const children = await Promise.all(childPromises)
+
+      item.children = children.sort((a: NavigationItem, b: NavigationItem) => {
+        // 目录排在前面，文件排在后面
+        if (a.isDirectory && !b.isDirectory) return -1
+        if (!a.isDirectory && b.isDirectory) return 1
+        return a.title.localeCompare(b.title)
+      })
     }
 
     return item
@@ -294,9 +200,6 @@ export const useNavigation = () => {
   // 获取分类的完整导航结构（支持嵌套）
   const getCategoryNavigation = async (categoryPath: string): Promise<NavigationItem[]> => {
     try {
-      console.log('=== Enhanced Sidebar Navigation Debug ===')
-      console.log('Getting category navigation for:', categoryPath)
-
       const navigation = await fetchContentNavigation()
 
       // 递归查找目标分类节点
@@ -314,23 +217,19 @@ export const useNavigation = () => {
       }
 
       const categoryNode = findCategoryNode(navigation, categoryPath)
-      console.log('Found category node:', categoryNode)
 
       if (categoryNode && categoryNode.children) {
-        const items = categoryNode.children
-          .map((child: any) => buildNavigationItem(child))
-          .sort((a: NavigationItem, b: NavigationItem) => {
-            // 目录排在前面，文件排在后面
-            if (a.isDirectory && !b.isDirectory) return -1
-            if (!a.isDirectory && b.isDirectory) return 1
-            return a.title.localeCompare(b.title)
-          })
+        const itemPromises = categoryNode.children.map((child: any) => buildNavigationItem(child))
+        const items = await Promise.all(itemPromises)
 
-        console.log('Final navigation items:', items)
-        return items
+        return items.sort((a: NavigationItem, b: NavigationItem) => {
+          // 目录排在前面，文件排在后面
+          if (a.isDirectory && !b.isDirectory) return -1
+          if (!a.isDirectory && b.isDirectory) return 1
+          return a.title.localeCompare(b.title)
+        })
       }
 
-      console.log('No category node or children found')
       return []
     } catch (error) {
       console.error(`Failed to get navigation for ${categoryPath}:`, error)
@@ -345,16 +244,7 @@ export const useNavigation = () => {
 
     if (segments.length >= 1) {
       const subjectId = segments[0]
-      let subjectTitle = formatTitle(subjectId)
-
-      try {
-        const subjectData = await queryContent(`/${subjectId}`).findOne()
-        if (subjectData?.title) {
-          subjectTitle = subjectData.title
-        }
-      } catch (e) {
-        // 使用格式化的标题
-      }
+      const subjectTitle = await getItemTitle(`/${subjectId}`, subjectId)
 
       breadcrumbs.push({
         title: subjectTitle,
@@ -365,16 +255,7 @@ export const useNavigation = () => {
     if (segments.length >= 2) {
       const categoryId = segments[1]
       const categoryPath = `/${segments[0]}/${categoryId}`
-      let categoryTitle = formatTitle(categoryId)
-
-      try {
-        const categoryData = await queryContent(categoryPath).findOne()
-        if (categoryData?.title) {
-          categoryTitle = categoryData.title
-        }
-      } catch (e) {
-        // 使用格式化的标题
-      }
+      const categoryTitle = await getItemTitle(categoryPath, categoryId)
 
       breadcrumbs.push({
         title: categoryTitle,

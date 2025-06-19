@@ -1,33 +1,35 @@
 <!-- File: components/AppToc.vue -->
 <template>
-  <div class="space-y-6">
-    <!-- 目录标题 -->
-    <div class="pb-4 border-b border-gray-200 dark:border-gray-700">
-      <div class="flex items-center space-x-2 mb-2">
-        <div class="w-6 h-6 bg-primary-100 dark:bg-primary-900/30 rounded-md flex items-center justify-center">
-          <UIcon name="i-heroicons-list-bullet" class="w-3 h-3 text-primary-600 dark:text-primary-400" />
-        </div>
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">目录</h3>
-      </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">点击跳转到对应章节</p>
+  <div class="space-y-4">
+    <!-- 简化的目录标题 -->
+    <div class="pb-3 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+        <UIcon name="i-heroicons-list-bullet" class="w-4 h-4 text-primary-600 dark:text-primary-400 mr-2" />
+        目录
+      </h3>
     </div>
 
     <!-- 目录列表 -->
-    <nav class="space-y-1" v-if="headings.length > 0">
+    <nav 
+      ref="tocContainer"
+      class="space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" 
+      v-if="headings.length > 0"
+    >
       <a
         v-for="heading in headings"
         :key="heading.id"
+        :ref="el => { if (activeHeading === heading.id) activeHeadingRef = el }"
         :href="`#${heading.id}`"
         @click.prevent="scrollToHeading(heading.id)"
         :class="[
-          'block py-2 px-3 text-sm transition-all duration-200 rounded-lg border-l-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
+          'block py-1.5 px-2 text-xs transition-all duration-200 rounded border-l-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800',
           activeHeading === heading.id
             ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300 font-medium'
             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50',
           getHeadingClass(heading.depth)
         ]"
       >
-        <span class="line-clamp-2">{{ heading.text }}</span>
+        <span class="line-clamp-3 leading-tight">{{ heading.text }}</span>
       </a>
     </nav>
 
@@ -35,27 +37,13 @@
     <div v-else class="text-center py-8">
       <UIcon 
         name="i-heroicons-document-text" 
-        class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2"
+        class="w-6 h-6 text-gray-300 dark:text-gray-600 mx-auto mb-2"
       />
-      <p class="text-sm text-gray-500 dark:text-gray-400">暂无目录</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">暂无目录</p>
     </div>
 
-    <!-- 阅读进度 -->
-    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-      <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
-        <span>阅读进度</span>
-        <span>{{ Math.round(scrollProgress) }}%</span>
-      </div>
-      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-        <div 
-          class="bg-primary-600 h-1.5 rounded-full transition-all duration-300 ease-out"
-          :style="{ width: `${scrollProgress}%` }"
-        />
-      </div>
-    </div>
-
-    <!-- 快捷操作 -->
-    <div class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+    <!-- 简化的快捷操作 -->
+    <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
       <UButton
         variant="outline"
         color="gray"
@@ -64,15 +52,6 @@
         icon="i-heroicons-arrow-up"
         label="回到顶部"
         @click="scrollToTop"
-      />
-      <UButton
-        variant="outline"
-        color="gray"
-        size="xs"
-        block
-        icon="i-heroicons-printer"
-        label="打印页面"
-        @click="printPage"
       />
     </div>
   </div>
@@ -88,17 +67,18 @@ interface TocHeading {
 // 响应式数据
 const headings = ref<TocHeading[]>([])
 const activeHeading = ref<string>('')
-const scrollProgress = ref(0)
+const tocContainer = ref<HTMLElement>()
+const activeHeadingRef = ref<HTMLElement>()
 
-// 获取标题级别对应的样式类
+// 获取标题级别对应的样式类 - 更紧凑的间距
 const getHeadingClass = (depth: number): string => {
   const classes = {
-    1: 'text-base font-semibold',
-    2: 'text-sm ml-2',
-    3: 'text-sm ml-4 text-gray-500 dark:text-gray-400',
-    4: 'text-xs ml-6 text-gray-500 dark:text-gray-400',
-    5: 'text-xs ml-8 text-gray-400 dark:text-gray-500',
-    6: 'text-xs ml-10 text-gray-400 dark:text-gray-500'
+    1: 'text-xs font-semibold',
+    2: 'text-xs ml-2',
+    3: 'text-xs ml-4 opacity-90',
+    4: 'text-xs ml-6 opacity-80',
+    5: 'text-xs ml-8 opacity-70',
+    6: 'text-xs ml-10 opacity-60'
   }
   return classes[depth as keyof typeof classes] || classes[6]
 }
@@ -128,14 +108,51 @@ const scrollToTop = () => {
   })
 }
 
-// 打印页面
-const printPage = () => {
-  window.print()
+// 将活跃的标题滚动到可视区域
+const scrollActiveHeadingIntoView = () => {
+  if (activeHeadingRef.value && tocContainer.value) {
+    const container = tocContainer.value
+    const activeElement = activeHeadingRef.value as HTMLElement
+    
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeElement.getBoundingClientRect()
+    
+    // 计算相对于容器的位置
+    const relativeTop = activeRect.top - containerRect.top + container.scrollTop
+    const relativeBottom = relativeTop + activeRect.height
+    
+    // 容器的可视区域
+    const containerTop = container.scrollTop
+    const containerBottom = containerTop + container.clientHeight
+    
+    // 如果活跃元素不在可视区域内，则滚动容器
+    if (relativeTop < containerTop + 40) {
+      // 元素在可视区域上方，向上滚动
+      container.scrollTo({
+        top: relativeTop - 40,
+        behavior: 'smooth'
+      })
+    } else if (relativeBottom > containerBottom - 40) {
+      // 元素在可视区域下方，向下滚动
+      container.scrollTo({
+        top: relativeBottom - container.clientHeight + 40,
+        behavior: 'smooth'
+      })
+    }
+  }
 }
 
-// 解析页面标题
+// 解析页面标题 - 只解析文章内容区域
 const parseHeadings = () => {
-  const headingElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6')
+  // 只查找文章内容区域内的标题
+  const articleContent = document.getElementById('article-content')
+  if (!articleContent) {
+    console.log('未找到文章内容区域')
+    headings.value = []
+    return
+  }
+  
+  const headingElements = articleContent.querySelectorAll('h1, h2, h3, h4, h5, h6')
   const newHeadings: TocHeading[] = []
   
   headingElements.forEach((el, index) => {
@@ -170,39 +187,52 @@ const parseHeadings = () => {
   })
   
   headings.value = newHeadings
-  console.log('解析到的标题:', newHeadings)
+  console.log('解析到的文章标题:', newHeadings)
 }
 
-// 计算滚动进度和活跃标题
-const updateScrollState = () => {
+// 计算活跃标题 - 只考虑文章内容区域
+const updateActiveHeading = () => {
   const scrollTop = window.scrollY
-  const documentHeight = document.documentElement.scrollHeight - window.innerHeight
+  const articleContent = document.getElementById('article-content')
   
-  // 更新滚动进度
-  scrollProgress.value = documentHeight > 0 ? (scrollTop / documentHeight) * 100 : 0
+  if (!articleContent) {
+    return
+  }
   
-  // 更新活跃标题
-  const headingElements = headings.value.map(h => document.getElementById(h.id)).filter(Boolean)
+  // 只获取文章内容区域内的标题元素
+  const headingElements = headings.value
+    .map(h => articleContent.querySelector(`#${h.id}`))
+    .filter(Boolean) as HTMLElement[]
+    
   const headerHeight = 100
+  
+  let newActiveHeading = ''
   
   for (let i = headingElements.length - 1; i >= 0; i--) {
     const element = headingElements[i]
     if (element && element.offsetTop <= scrollTop + headerHeight) {
-      const headingId = element.id
-      if (activeHeading.value !== headingId) {
-        activeHeading.value = headingId
-      }
+      newActiveHeading = element.id
       break
     }
   }
   
-  // 如果没有找到合适的标题，清空活跃状态
-  if (scrollTop < 100) {
-    activeHeading.value = ''
+  // 如果没有找到合适的标题，且在页面顶部，清空活跃状态
+  if (!newActiveHeading && scrollTop < 100) {
+    newActiveHeading = ''
+  }
+  
+  // 只有当活跃标题改变时才更新
+  if (activeHeading.value !== newActiveHeading) {
+    activeHeading.value = newActiveHeading
+    
+    // 延迟执行滚动，确保DOM已更新
+    nextTick(() => {
+      scrollActiveHeadingIntoView()
+    })
   }
 }
 
-// 节流函数
+// 节流函数 - 更快的响应速度
 const throttle = (func: Function, delay: number) => {
   let timeoutId: NodeJS.Timeout | null = null
   let lastExecTime = 0
@@ -223,8 +253,8 @@ const throttle = (func: Function, delay: number) => {
   }
 }
 
-// 节流后的滚动处理函数
-const throttledScrollHandler = throttle(updateScrollState, 100)
+// 节流后的滚动处理函数 - 减少延迟到50ms提高响应性
+const throttledScrollHandler = throttle(updateActiveHeading, 50)
 
 // 组件挂载时初始化
 onMounted(() => {
@@ -232,22 +262,26 @@ onMounted(() => {
   nextTick(() => {
     setTimeout(() => {
       parseHeadings()
-      updateScrollState()
-    }, 500)
+      updateActiveHeading()
+    }, 300) // 减少延迟时间
   })
   
   // 添加滚动监听
   window.addEventListener('scroll', throttledScrollHandler, { passive: true })
   
-  // 监听DOM变化，重新解析标题
+  // 监听文章内容区域的DOM变化，重新解析标题
   const observer = new MutationObserver(() => {
     setTimeout(parseHeadings, 100)
   })
   
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  })
+  // 只监听文章内容区域的变化
+  const articleContent = document.getElementById('article-content')
+  if (articleContent) {
+    observer.observe(articleContent, {
+      childList: true,
+      subtree: true
+    })
+  }
   
   // 清理函数
   onUnmounted(() => {
@@ -263,24 +297,50 @@ watch(() => route.path, () => {
     setTimeout(() => {
       parseHeadings()
       activeHeading.value = ''
-      scrollProgress.value = 0
-    }, 500)
+    }, 300)
+  })
+})
+
+// 监听活跃标题变化，自动滚动到可视区域
+watch(activeHeading, () => {
+  nextTick(() => {
+    scrollActiveHeadingIntoView()
   })
 })
 </script>
 
 <style scoped>
-.line-clamp-2 {
+.line-clamp-3 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* 平滑的进度条动画 */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* 优化滚动条样式 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(209 213 219);
+  border-radius: 2px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(156 163 175);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128);
 }
 
 /* 活跃状态的特殊效果 */

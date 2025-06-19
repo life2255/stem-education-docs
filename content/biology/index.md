@@ -1,8 +1,7 @@
 ---
 title: 生物学
 description: 探索生命的奥秘和生物世界的多样性
-navigation:
-  title: 生物学概述
+order: 1
 ---
 
 # 生物学

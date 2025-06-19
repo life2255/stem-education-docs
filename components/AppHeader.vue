@@ -2,7 +2,7 @@
 <template>
   <header class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
     <!-- 主导航栏 -->
-    <nav class="stem-container">
+    <nav class="max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <NuxtLink
@@ -88,7 +88,7 @@
         v-if="activeSubject && currentSubject && currentSubject.categories && currentSubject.categories.length > 0"
         class="bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700"
       >
-        <div class="stem-container">
+        <div class="max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6">
           <div class="flex items-center justify-between py-3">
             <!-- 分类导航 -->
             <div class="flex items-center space-x-1 overflow-x-auto scrollbar-hide">

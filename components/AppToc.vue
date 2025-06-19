@@ -21,7 +21,7 @@
         :href="`#${heading.id}`"
         @click.prevent="scrollToHeading(heading.id)"
         :class="[
-          'block py-1.5 px-2 text-xs transition-all duration-200 rounded border-l-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800',
+          'block py-1.5 px-2 text-sm transition-all duration-200 rounded border-l-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800',
           activeHeading === heading.id
             ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300 font-medium'
             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50',
@@ -69,12 +69,12 @@ const shouldShowToc = computed(() => {
 // 获取标题级别对应的样式类 - 更紧凑的间距
 const getHeadingClass = (depth: number): string => {
   const classes = {
-    1: 'text-xs font-semibold',
-    2: 'text-xs ml-2',
-    3: 'text-xs ml-4 opacity-90',
-    4: 'text-xs ml-6 opacity-80',
-    5: 'text-xs ml-8 opacity-70',
-    6: 'text-xs ml-10 opacity-60'
+    1: 'text-sm font-semibold',
+    2: 'text-sm ml-2',
+    3: 'text-sm ml-4 opacity-90',
+    4: 'text-sm ml-6 opacity-80',
+    5: 'text-sm ml-8 opacity-70',
+    6: 'text-sm ml-10 opacity-60'
   }
   return classes[depth as keyof typeof classes] || classes[6]
 }

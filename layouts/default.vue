@@ -4,44 +4,64 @@
     <!-- 顶部导航栏（包含一级和二级菜单） -->
     <AppHeader @open-search="isSearchOpen = true" />
 
-    <!-- 主内容区域 -->
-    <div class="flex">
-      <!-- 左侧栏 -->
-      <aside 
-        v-if="showSidebar" 
-        class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+    <!-- 主内容区域 - 使用更宽的容器 -->
+    <div class="max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6">
+      <div 
+        :class="[
+          'grid gap-6 py-8',
+          showSidebar && showToc ? 'grid-cols-12' : 
+          showSidebar || showToc ? 'grid-cols-10' : 
+          'grid-cols-1'
+        ]"
       >
-        <div class="p-6">
-          <AppSidebar />
-        </div>
-      </aside>
+        <!-- 左侧栏 - 更靠左 -->
+        <aside 
+          v-if="showSidebar" 
+          :class="[
+            'sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent',
+            showToc ? 'col-span-2' : 'col-span-3'
+          ]"
+        >
+          <div class="pr-2">
+            <AppSidebar />
+          </div>
+        </aside>
 
-      <!-- 主要内容区域 -->
-      <main class="flex-1 min-w-0">
-        <!-- 内容容器 -->
-        <div :class="showToc ? 'pr-80' : ''">
-          <div class="stem-container py-8">
+        <!-- 主要内容区域 -->
+        <main 
+          :class="[
+            showSidebar && showToc ? 'col-span-8' :
+            showSidebar || showToc ? 'col-span-7' :
+            'col-span-12',
+            'min-w-0'
+          ]"
+        >
+          <!-- 内容容器 - 调整最大宽度 -->
+          <div class="max-w-5xl mx-auto px-4">
             <slot />
           </div>
-        </div>
+        </main>
 
-        <!-- 右侧文章目录 -->
+        <!-- 右侧文章目录 - 更靠右 -->
         <aside 
           v-if="showToc"
-          class="fixed top-16 right-0 w-80 h-[calc(100vh-4rem)] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+          :class="[
+            'sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent',
+            showSidebar ? 'col-span-2' : 'col-span-3'
+          ]"
         >
-          <div class="p-6">
+          <div class="pl-2">
             <AppToc />
           </div>
         </aside>
-      </main>
+      </div>
     </div>
 
     <!-- 页脚 -->
     <AppFooter />
 
     <!-- 搜索弹窗 -->
-    <AppSearch v-if="isSearchOpen" v-model="isSearchOpen" />
+    <AppSearch v-model="isSearchOpen" />
   </div>
 </template>
 
@@ -94,7 +114,14 @@ if (process.dev) {
     console.log('Route path:', route.path)
     console.log('Show sidebar:', showSidebar.value)
     console.log('Show TOC:', showToc.value)
-    console.log('Search open:', isSearchOpen.value)
+    console.log('Grid layout:', {
+      sidebar: showSidebar.value,
+      toc: showToc.value,
+      gridCols: showSidebar.value && showToc.value ? 12 : 
+                showSidebar.value || showToc.value ? 10 : 1,
+      mainCols: showSidebar.value && showToc.value ? 8 :
+                showSidebar.value || showToc.value ? 7 : 12
+    })
   })
 }
 </script>
@@ -141,5 +168,24 @@ if (process.dev) {
 
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: rgb(107 114 128);
+}
+
+/* 网格布局优化 */
+.grid {
+  align-items: start;
+}
+
+/* 内容区域阅读优化 */
+.max-w-5xl {
+  max-width: 64rem; /* 1024px - 更宽的阅读区域 */
+}
+
+/* 侧栏内边距优化 */
+.pr-2 {
+  padding-right: 0.5rem;
+}
+
+.pl-2 {
+  padding-left: 0.5rem;
 }
 </style>

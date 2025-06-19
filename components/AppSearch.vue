@@ -170,8 +170,8 @@ const isOpen = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-// 获取学科数据
-const subjects = getSubjects()
+// 获取学科数据（改为异步获取）
+const { data: subjects } = await useAsyncData('search-subjects', () => getSubjects())
 
 // 难度标签
 const difficultyLabels: Record<string, string> = {
@@ -254,7 +254,7 @@ const getSubjectName = (path: string) => {
   const segments = path.split('/').filter(Boolean)
   if (segments.length > 0) {
     const subjectId = segments[0]
-    const subject = subjects.find(s => s.id === subjectId)
+    const subject = subjects.value?.find(s => s.id === subjectId)
     return subject?.title || subjectId
   }
   return '未知'
@@ -265,7 +265,7 @@ const getSubjectIcon = (path: string) => {
   const segments = path.split('/').filter(Boolean)
   if (segments.length > 0) {
     const subjectId = segments[0]
-    const subject = subjects.find(s => s.id === subjectId)
+    const subject = subjects.value?.find(s => s.id === subjectId)
     return subject?.icon || 'i-heroicons-document-text'
   }
   return 'i-heroicons-document-text'

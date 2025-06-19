@@ -20,7 +20,7 @@
           <NuxtLink
             v-for="subject in subjects"
             :key="subject.id"
-            :to="`/${subject.id}`"
+            :to="subject.path"
             @click="handleSubjectClick(subject.id)"
             :class="[
               'flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
@@ -111,10 +111,10 @@
                 <NuxtLink
                   v-for="category in currentSubject.categories"
                   :key="category.id"
-                  :to="`/${currentSubject.id}/${category.id}`"
+                  :to="category.path"
                   :class="[
                     'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
-                    route.path.startsWith(`/${currentSubject.id}/${category.id}`)
+                    route.path.startsWith(category.path)
                       ? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-gray-700/70 hover:text-gray-900 dark:hover:text-white'
                   ]"
@@ -164,7 +164,7 @@
           <div v-for="subject in subjects" :key="subject.id" class="space-y-2">
             <!-- 学科标题 -->
             <NuxtLink
-              :to="`/${subject.id}`"
+              :to="subject.path"
               @click="handleMobileSubjectClick(subject.id)"
               :class="[
                 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
@@ -194,7 +194,7 @@
                 <NuxtLink
                   v-for="category in subject.categories"
                   :key="category.id"
-                  :to="`/${subject.id}/${category.id}`"
+                  :to="category.path"
                   @click="isMobileMenuOpen = false"
                   class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
                 >
@@ -221,24 +221,22 @@ const isSearchOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 const activeSubject = ref<string | null>(null)
 
-// 获取学科数据（从静态配置）
-const subjects = getSubjects()
-console.log('学科数据:', subjects)
+// 获取学科数据（改为异步获取）
+const { data: subjects, pending: subjectsLoading } = await useAsyncData('subjects', () => getSubjects())
 
-// 为每个学科添加路径信息
-const subjectsWithPath = computed(() => {
-  return subjects.map(subject => ({
-    ...subject,
-    path: `/${subject.id}`
-  }))
-})
+console.log('学科数据:', subjects.value)
 
-// 当前学科信息
-const currentSubject = computed(() => {
-  if (!activeSubject.value) return null
-  const subject = getSubjectById(activeSubject.value)
-  return subject ? { ...subject, path: `/${subject.id}` } : null
-})
+// 当前学科信息（改为异步获取）
+const { data: currentSubject } = await useAsyncData(
+  `current-subject-${activeSubject.value}`,
+  async () => {
+    if (!activeSubject.value) return null
+    return await getSubjectById(activeSubject.value)
+  },
+  {
+    watch: [activeSubject]
+  }
+)
 
 // 根据路由自动设置 activeSubject
 watch(() => route.path, (newPath) => {
@@ -250,11 +248,11 @@ watch(() => route.path, (newPath) => {
     console.log('检测到学科ID:', subjectId)
 
     // 检查这个学科是否存在
-    if (subjects.some(s => s.id === subjectId)) {
+    if (subjects.value?.some(s => s.id === subjectId)) {
       console.log('设置 activeSubject 为:', subjectId)
       activeSubject.value = subjectId
     } else {
-      console.log('学科不存在，可用学科:', subjects.map(s => s.id))
+      console.log('学科不存在，可用学科:', subjects.value?.map(s => s.id))
       activeSubject.value = null
     }
   } else {

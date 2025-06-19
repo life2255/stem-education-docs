@@ -1,3 +1,4 @@
+// File: nuxt.config.ts
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
@@ -10,11 +11,20 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss'
   ],
 
-  // 生成静态站点
+  // 静态生成配置
   nitro: {
     prerender: {
       routes: ['/sitemap.xml']
     }
+  },
+
+  // 解决中间件冲突的关键配置
+  experimental: {
+    // 方案一：完全禁用（推荐用于开发环境）
+    appManifest: false
+    
+    // 方案二：启用但允许覆盖（推荐用于生产环境）
+    // appManifest: true
   },
 
   // 内容配置
@@ -59,4 +69,11 @@ export default defineNuxtConfig({
   devServer: {
     port: 3000
   }
+
+  // 备选方案：如果上面不行，尝试调整模块顺序
+  // modules: [
+  //   '@nuxtjs/tailwindcss',
+  //   '@nuxt/content', 
+  //   '@nuxt/ui'
+  // ],
 })

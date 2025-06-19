@@ -7,15 +7,28 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "clean": "rm -rf .nuxt dist .output",
+    "lint": "eslint . --ext .vue,.js,.ts",
+    "lint:fix": "eslint . --ext .vue,.js,.ts --fix"
   },
   "dependencies": {
     "@nuxt/content": "^2.13.2",
     "@nuxt/ui": "^2.18.4",
-    "nuxt": "^3.13.0"
+    "mermaid": "^11.6.0",
+    "nuxt": "^3.13.0",
+    "rehype-mathjax": "^6.0.0",
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
+    "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@nuxtjs/tailwindcss": "^6.12.1",
-    "@tailwindcss/typography": "^0.5.14"
+    "@tailwindcss/typography": "^0.5.14",
+    "@types/mathjax": "^0.0.37",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

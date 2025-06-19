@@ -21,17 +21,17 @@
         <NuxtLink
           v-for="category in currentSubject.categories"
           :key="category.id"
-          :to="`/${currentSubject.id}/${category.id}`"
+          :to="category.path"
           :class="[
             'group flex items-center p-4 rounded-xl border transition-all duration-200',
-            route.path.startsWith(`/${currentSubject.id}/${category.id}`)
+            route.path.startsWith(category.path)
               ? 'bg-primary-50 border-primary-200 text-primary-700 shadow-sm dark:bg-primary-900/30 dark:border-primary-700 dark:text-primary-300'
               : 'bg-white border-gray-200 text-gray-700 hover:border-primary-300 hover:bg-primary-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:bg-primary-900/20'
           ]"
         >
           <div :class="[
             'w-10 h-10 rounded-lg flex items-center justify-center mr-4 transition-colors',
-            route.path.startsWith(`/${currentSubject.id}/${category.id}`)
+            route.path.startsWith(category.path)
               ? 'bg-primary-100 dark:bg-primary-800/50'
               : 'bg-gray-100 group-hover:bg-primary-100 dark:bg-gray-700 dark:group-hover:bg-primary-800/50'
           ]">
@@ -39,7 +39,7 @@
               :name="category.icon" 
               :class="[
                 'w-5 h-5 transition-colors',
-                route.path.startsWith(`/${currentSubject.id}/${category.id}`)
+                route.path.startsWith(category.path)
                   ? 'text-primary-600 dark:text-primary-400'
                   : 'text-gray-500 group-hover:text-primary-600 dark:text-gray-400 dark:group-hover:text-primary-400'
               ]"
@@ -126,15 +126,29 @@ const expandedItems = ref<Set<string>>(new Set())
 // 计算当前学科和分类
 const pathSegments = computed(() => route.path.split('/').filter(Boolean))
 
-const currentSubject = computed(() => {
-  if (pathSegments.value.length === 0) return null
-  return getSubjectById(pathSegments.value[0])
-})
+// 当前学科（改为异步获取）
+const { data: currentSubject } = await useAsyncData(
+  `sidebar-subject-${pathSegments.value[0] || 'none'}`,
+  async () => {
+    if (pathSegments.value.length === 0) return null
+    return await getSubjectById(pathSegments.value[0])
+  },
+  {
+    watch: [() => pathSegments.value[0]]
+  }
+)
 
-const currentCategory = computed(() => {
-  if (pathSegments.value.length < 2 || !currentSubject.value) return null
-  return getCategoryById(pathSegments.value[0], pathSegments.value[1])
-})
+// 当前分类（改为异步获取）
+const { data: currentCategory } = await useAsyncData(
+  `sidebar-category-${pathSegments.value[0] || 'none'}-${pathSegments.value[1] || 'none'}`,
+  async () => {
+    if (pathSegments.value.length < 2 || !currentSubject.value) return null
+    return await getCategoryById(pathSegments.value[0], pathSegments.value[1])
+  },
+  {
+    watch: [() => pathSegments.value[0], () => pathSegments.value[1]]
+  }
+)
 
 // 判断是否为学科首页
 const isSubjectHomepage = computed(() => {

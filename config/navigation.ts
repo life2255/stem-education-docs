@@ -44,12 +44,6 @@ export const navigationConfig: NavigationConfig = {
           title: '相对论',
           icon: 'i-heroicons-globe-alt',
           description: '时空的本质和引力理论'
-        },
-        {
-          id: '相对论',
-          title: '相对论（中文）',
-          icon: 'i-heroicons-globe-alt',
-          description: '中文目录测试'
         }
       ]
     },
@@ -76,12 +70,6 @@ export const navigationConfig: NavigationConfig = {
           title: '参考资料',
           icon: 'i-heroicons-book-open',
           description: '化学参考资料和工具'
-        },
-        {
-          id: '无机化学',
-          title: '无机化学（中文）',
-          icon: 'i-heroicons-cube',
-          description: '中文目录测试'
         }
       ]
     },

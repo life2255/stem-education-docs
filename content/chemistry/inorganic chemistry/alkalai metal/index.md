@@ -2,7 +2,7 @@
 title: 化学
 description: 研究物质的组成、性质和变化规律
 navigation:
-  title: 化学概述
+  title: 碱金属
 ---
 
 # 化学

@@ -259,36 +259,42 @@ const getDifficultyIcon = (difficulty: string): string => {
   return icons[difficulty as keyof typeof icons] || 'i-heroicons-academic-cap'
 }
 
-// 计算面包屑导航
-const breadcrumbs = computed(() => {
-  const pathSegments = route.path.split('/').filter(Boolean)
-  const result: any = {}
+// 计算面包屑导航（改为异步获取）
+const { data: breadcrumbs } = await useAsyncData(
+  `breadcrumbs-${route.path}`,
+  async () => {
+    const pathSegments = route.path.split('/').filter(Boolean)
+    const result: any = {}
 
-  if (pathSegments.length >= 1) {
-    const subjectId = pathSegments[0]
-    const subject = getSubjectById(subjectId)
-    if (subject) {
-      result.subject = {
-        title: subject.title,
-        path: `/${subjectId}`
+    if (pathSegments.length >= 1) {
+      const subjectId = pathSegments[0]
+      const subject = await getSubjectById(subjectId)
+      if (subject) {
+        result.subject = {
+          title: subject.title,
+          path: subject.path
+        }
       }
     }
-  }
 
-  if (pathSegments.length >= 2) {
-    const subjectId = pathSegments[0]
-    const categoryId = pathSegments[1]
-    const category = getCategoryById(subjectId, categoryId)
-    if (category) {
-      result.category = {
-        title: category.title,
-        path: `/${subjectId}/${categoryId}`
+    if (pathSegments.length >= 2) {
+      const subjectId = pathSegments[0]
+      const categoryId = pathSegments[1]
+      const category = await getCategoryById(subjectId, categoryId)
+      if (category) {
+        result.category = {
+          title: category.title,
+          path: category.path
+        }
       }
     }
-  }
 
-  return result
-})
+    return result
+  },
+  {
+    watch: [() => route.path]
+  }
+)
 
 // 格式化日期
 const formatDate = (date: string) => {

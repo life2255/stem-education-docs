@@ -1,5 +1,5 @@
 // File: composables/useNavigation.ts
-import { navigationConfig, type Subject, type Category } from '~/config/navigation'
+// 使用 Nuxt Content 默认路由系统，去掉静态配置
 
 export interface NavigationItem {
   title: string
@@ -9,32 +9,130 @@ export interface NavigationItem {
   isDirectory: boolean
 }
 
-export { type Subject, type Category }
+export interface Subject {
+  id: string
+  title: string
+  description: string
+  icon: string
+  path: string
+  categories: Category[]
+}
+
+export interface Category {
+  id: string
+  title: string
+  description?: string
+  icon: string
+  path: string
+}
 
 export const useNavigation = () => {
-  // 获取所有学科（从静态配置）
-  const getSubjects = (): Subject[] => {
-    return navigationConfig.subjects
+  // 学科基本信息（保留样式需要的图标等）
+  const subjectMeta = {
+    physics: {
+      title: '物理学',
+      description: '探索物质运动规律和自然现象的本质',
+      icon: 'i-heroicons-bolt'
+    },
+    chemistry: {
+      title: '化学', 
+      description: '研究物质的组成、性质和变化规律',
+      icon: 'i-heroicons-beaker'
+    },
+    biology: {
+      title: '生物学',
+      description: '探索生命的奥秘和生物世界的多样性', 
+      icon: 'i-heroicons-heart'
+    },
+    mathematics: {
+      title: '数学',
+      description: '逻辑推理和抽象思维的基础学科',
+      icon: 'i-heroicons-calculator'
+    }
   }
 
-  // 根据学科ID获取学科信息
-  const getSubjectById = (subjectId: string): Subject | null => {
-    return navigationConfig.subjects.find(subject => subject.id === subjectId) || null
-  }
-
-  // 根据学科ID和分类ID获取分类信息
-  const getCategoryById = (subjectId: string, categoryId: string): Category | null => {
-    const subject = getSubjectById(subjectId)
-    if (!subject) return null
-    
-    return subject.categories.find(category => category.id === categoryId) || null
+  // 分类默认图标
+  const getDefaultCategoryIcon = (categoryId: string): string => {
+    const iconMap: Record<string, string> = {
+      'mechanics': 'i-heroicons-cog-6-tooth',
+      'electricity': 'i-heroicons-lightning-bolt', 
+      '相对论': 'i-heroicons-globe-alt',
+      'inorganic chemistry': 'i-heroicons-cube',
+      'organic chemistry': 'i-heroicons-puzzle-piece',
+      'reference': 'i-heroicons-book-open',
+      'cell-biology': 'i-heroicons-squares-2x2',
+      'genetics': 'i-heroicons-code-bracket',
+      'algebra': 'i-heroicons-variable',
+      'calculus': 'i-heroicons-chart-bar'
+    }
+    return iconMap[categoryId] || 'i-heroicons-folder'
   }
 
   // 格式化标题：去掉.md，替换连字符
   const formatTitle = (name: string): string => {
     return name
-      .replace(/\.md$/, '')  // 移除.md扩展名
-      .replace(/[-_]/g, ' ') // 替换连字符和下划线为空格
+      .replace(/\.md$/, '')
+      .replace(/[-_]/g, ' ')
+  }
+
+  // 从 Nuxt Content 获取所有学科
+  const getSubjects = async (): Promise<Subject[]> => {
+    try {
+      const navigation = await fetchContentNavigation()
+      
+      const subjects: Subject[] = []
+      
+      for (const item of navigation) {
+        if (!item._path) continue
+        
+        const subjectId = item._path.replace('/', '')
+        const meta = subjectMeta[subjectId as keyof typeof subjectMeta]
+        
+        if (meta && item.children) {
+          // 获取分类
+          const categories: Category[] = item.children
+            .filter(child => child._path && child.children)
+            .map(child => {
+              const categoryId = child._path!.split('/').pop() || ''
+              return {
+                id: categoryId,
+                title: child.title || formatTitle(categoryId),
+                description: child.description,
+                icon: getDefaultCategoryIcon(categoryId),
+                path: child._path!
+              }
+            })
+
+          subjects.push({
+            id: subjectId,
+            title: meta.title,
+            description: meta.description,
+            icon: meta.icon,
+            path: item._path,
+            categories
+          })
+        }
+      }
+      
+      return subjects
+    } catch (error) {
+      console.error('获取学科数据失败:', error)
+      return []
+    }
+  }
+
+  // 根据学科ID获取学科信息
+  const getSubjectById = async (subjectId: string): Promise<Subject | null> => {
+    const subjects = await getSubjects()
+    return subjects.find(subject => subject.id === subjectId) || null
+  }
+
+  // 根据学科ID和分类ID获取分类信息
+  const getCategoryById = async (subjectId: string, categoryId: string): Promise<Category | null> => {
+    const subject = await getSubjectById(subjectId)
+    if (!subject) return null
+    
+    return subject.categories.find(category => category.id === categoryId) || null
   }
 
   // 递归构建导航项
@@ -124,13 +222,13 @@ export const useNavigation = () => {
   }
 
   // 根据路径获取面包屑导航
-  const getBreadcrumbs = (currentPath: string) => {
+  const getBreadcrumbs = async (currentPath: string) => {
     const segments = currentPath.split('/').filter(Boolean)
     const breadcrumbs = [{ title: '首页', _path: '/' }]
 
     if (segments.length >= 1) {
       const subjectId = segments[0]
-      const subject = getSubjectById(subjectId)
+      const subject = await getSubjectById(subjectId)
       
       breadcrumbs.push({
         title: subject?.title || subjectId,
@@ -141,7 +239,7 @@ export const useNavigation = () => {
     if (segments.length >= 2) {
       const subjectId = segments[0]
       const categoryId = segments[1]
-      const category = getCategoryById(subjectId, categoryId)
+      const category = await getCategoryById(subjectId, categoryId)
       
       breadcrumbs.push({
         title: category?.title || categoryId,
@@ -154,7 +252,7 @@ export const useNavigation = () => {
 
   return {
     getSubjects,
-    getSubjectById,
+    getSubjectById, 
     getCategoryById,
     getCategoryNavigation,
     getBreadcrumbs,

@@ -1,4 +1,6 @@
-// composables/useNavigation.ts
+// File: composables/useNavigation.ts
+import { navigationConfig, type Subject, type Category } from '~/config/navigation'
+
 export interface NavigationItem {
   title: string
   _path: string
@@ -7,160 +9,32 @@ export interface NavigationItem {
   isDirectory: boolean
 }
 
-export interface Subject {
-  id: string
-  title: string
-  icon: string
-  path: string
-  categories: Category[]
-}
-
-export interface Category {
-  id: string
-  title: string
-  path: string
-  icon: string
-}
+export { type Subject, type Category }
 
 export const useNavigation = () => {
-  // 根据学科ID获取默认图标
-  const getDefaultIcon = (subjectId: string): string => {
-    const iconMap: Record<string, string> = {
-      physics: 'i-heroicons-bolt',
-      chemistry: 'i-heroicons-beaker',
-      biology: 'i-heroicons-heart',
-      mathematics: 'i-heroicons-calculator',
-      computer: 'i-heroicons-computer-desktop',
-      engineering: 'i-heroicons-cog-6-tooth',
-    }
-
-    for (const [key, icon] of Object.entries(iconMap)) {
-      if (subjectId.toLowerCase().includes(key)) {
-        return icon
-      }
-    }
-
-    return 'i-heroicons-folder'
+  // 获取所有学科（从静态配置）
+  const getSubjects = (): Subject[] => {
+    return navigationConfig.subjects
   }
 
-  // 根据分类ID获取默认图标
-  const getCategoryIcon = (categoryId: string): string => {
-    const iconMap: Record<string, string> = {
-      mechanics: 'i-heroicons-cog-6-tooth',
-      electricity: 'i-heroicons-bolt',
-      thermodynamics: 'i-heroicons-fire',
-      optics: 'i-heroicons-eye',
-      quantum: 'i-heroicons-atom',
-    }
-
-    for (const [key, icon] of Object.entries(iconMap)) {
-      if (categoryId.toLowerCase().includes(key)) {
-        return icon
-      }
-    }
-
-    return 'i-heroicons-folder'
+  // 根据学科ID获取学科信息
+  const getSubjectById = (subjectId: string): Subject | null => {
+    return navigationConfig.subjects.find(subject => subject.id === subjectId) || null
   }
 
-  // 简单的标题格式化：去掉.md，替换连字符
+  // 根据学科ID和分类ID获取分类信息
+  const getCategoryById = (subjectId: string, categoryId: string): Category | null => {
+    const subject = getSubjectById(subjectId)
+    if (!subject) return null
+    
+    return subject.categories.find(category => category.id === categoryId) || null
+  }
+
+  // 格式化标题：去掉.md，替换连字符
   const formatTitle = (name: string): string => {
     return name
       .replace(/\.md$/, '')  // 移除.md扩展名
       .replace(/[-_]/g, ' ') // 替换连字符和下划线为空格
-  }
-
-  // 专门读取 _dir.yml 文件的函数
-  const readDirYml = async (dirPath: string): Promise<string | null> => {
-    try {
-      const dirYmlPath = `${dirPath}/_dir`
-      const dirData = await queryContent(dirYmlPath).findOne()
-      return dirData?.title || null
-    } catch (e) {
-      return null
-    }
-  }
-
-  // 获取标题：优先 _dir.yml，其次格式化文件名
-  const getItemTitle = async (itemPath: string, itemName: string): Promise<string> => {
-    // 1. 尝试读取 _dir.yml
-    const dirTitle = await readDirYml(itemPath)
-    if (dirTitle) {
-      return dirTitle
-    }
-
-    // 2. 使用文件名格式化
-    return formatTitle(itemName)
-  }
-
-  // 获取学科列表（一级菜单）
-  const getSubjects = async (): Promise<Subject[]> => {
-    try {
-      const navigation = await fetchContentNavigation()
-      const subjects: Subject[] = []
-
-      for (const item of navigation) {
-        if (item._path && item._path !== '/' && item._path.startsWith('/')) {
-          const pathSegments = item._path.split('/').filter(Boolean)
-
-          if (pathSegments.length === 1) {
-            const subjectId = pathSegments[0]
-            const subjectTitle = await getItemTitle(item._path, subjectId)
-            const categories = await getSubjectCategoriesFromNav(item, subjectId)
-
-            subjects.push({
-              id: subjectId,
-              title: subjectTitle,
-              icon: getDefaultIcon(subjectId),
-              path: `/${subjectId}`,
-              categories
-            })
-          }
-        }
-      }
-
-      return subjects.sort((a, b) => a.title.localeCompare(b.title))
-    } catch (error) {
-      console.error('Failed to get subjects:', error)
-      return []
-    }
-  }
-
-  // 从导航树中提取学科的分类
-  const getSubjectCategoriesFromNav = async (subjectItem: any, subjectId: string): Promise<Category[]> => {
-    const categories: Category[] = []
-
-    if (!subjectItem.children) {
-      return categories
-    }
-
-    console.log(`Processing categories for ${subjectId}:`, subjectItem.children)
-
-    for (const child of subjectItem.children) {
-      // 修复：只要是文件夹路径就识别为分类，不要求必须有子内容
-      if (child._path) {
-        const pathSegments = child._path.split('/').filter(Boolean)
-        if (pathSegments.length === 2 && pathSegments[0] === subjectId) {
-          // 判断是否为文件夹（不是.md文件）
-          const categoryId = pathSegments[1]
-          if (!categoryId.endsWith('.md')) {
-            console.log(`Found category: ${categoryId} at ${child._path}`)
-            console.log(`Category has children:`, child.children?.length || 0)
-
-            const categoryTitle = await getItemTitle(child._path, categoryId)
-
-            categories.push({
-              id: categoryId,
-              title: categoryTitle,
-              path: child._path,
-              icon: getCategoryIcon(categoryId)
-            })
-          }
-        }
-      }
-    }
-
-    console.log(`Final categories for ${subjectId}:`, categories)
-    return categories
   }
 
   // 递归构建导航项
@@ -174,13 +48,11 @@ export const useNavigation = () => {
       itemName = pathSegments[pathSegments.length - 1]
     }
 
-    // 获取标题
+    // 获取标题 - 优先使用文档的title字段
     let title: string
-    if (isDirectory) {
-      // 目录：尝试读取 _dir.yml
-      title = await getItemTitle(node._path, itemName)
+    if (node.title) {
+      title = node.title
     } else {
-      // 文件：直接格式化文件名
       title = formatTitle(itemName)
     }
 
@@ -207,11 +79,14 @@ export const useNavigation = () => {
     return item
   }
 
-  // 获取分类的完整导航结构（支持嵌套）
+  // 获取分类的导航结构（用于侧边栏）
   const getCategoryNavigation = async (categoryPath: string): Promise<NavigationItem[]> => {
     try {
+      console.log('获取分类导航:', categoryPath)
+      
+      // 使用 fetchContentNavigation 获取导航结构
       const navigation = await fetchContentNavigation()
-
+      
       // 递归查找目标分类节点
       const findCategoryNode = (nodes: any[], targetPath: string): any => {
         for (const node of nodes) {
@@ -227,6 +102,7 @@ export const useNavigation = () => {
       }
 
       const categoryNode = findCategoryNode(navigation, categoryPath)
+      console.log('找到分类节点:', categoryNode)
 
       if (categoryNode && categoryNode.children) {
         const itemPromises = categoryNode.children.map((child: any) => buildNavigationItem(child))
@@ -242,34 +118,34 @@ export const useNavigation = () => {
 
       return []
     } catch (error) {
-      console.error(`Failed to get navigation for ${categoryPath}:`, error)
+      console.error(`获取分类导航失败 ${categoryPath}:`, error)
       return []
     }
   }
 
   // 根据路径获取面包屑导航
-  const getBreadcrumbs = async (currentPath: string) => {
+  const getBreadcrumbs = (currentPath: string) => {
     const segments = currentPath.split('/').filter(Boolean)
     const breadcrumbs = [{ title: '首页', _path: '/' }]
 
     if (segments.length >= 1) {
       const subjectId = segments[0]
-      const subjectTitle = await getItemTitle(`/${subjectId}`, subjectId)
-
+      const subject = getSubjectById(subjectId)
+      
       breadcrumbs.push({
-        title: subjectTitle,
+        title: subject?.title || subjectId,
         _path: `/${subjectId}`
       })
     }
 
     if (segments.length >= 2) {
+      const subjectId = segments[0]
       const categoryId = segments[1]
-      const categoryPath = `/${segments[0]}/${categoryId}`
-      const categoryTitle = await getItemTitle(categoryPath, categoryId)
-
+      const category = getCategoryById(subjectId, categoryId)
+      
       breadcrumbs.push({
-        title: categoryTitle,
-        _path: categoryPath
+        title: category?.title || categoryId,
+        _path: `/${subjectId}/${categoryId}`
       })
     }
 
@@ -278,6 +154,8 @@ export const useNavigation = () => {
 
   return {
     getSubjects,
+    getSubjectById,
+    getCategoryById,
     getCategoryNavigation,
     getBreadcrumbs,
     formatTitle

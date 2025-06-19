@@ -69,20 +69,22 @@ const showSidebar = computed(() => {
 })
 
 // 判断是否显示文章目录（TOC）
+// 改为基于实际内容而不是路径判断
 const showToc = computed(() => {
   // 首页不显示TOC
   if (route.path === '/') return false
   
   const pathSegments = route.path.split('/').filter(Boolean)
   
-  // 学科首页不显示TOC（如 /physics）
+  // 至少需要是学科下的页面才考虑显示TOC
+  if (pathSegments.length < 1) return false
+  
+  // 学科首页（如 /physics）不显示TOC，因为通常是分类导航页面
   if (pathSegments.length === 1) return false
   
-  // 分类首页不显示TOC（如 /physics/mechanics）  
-  if (pathSegments.length === 2 && route.path.endsWith('/')) return false
-  
-  // 其他情况（具体文章页面）显示TOC
-  return pathSegments.length >= 2
+  // 其他情况（包括分类index页面和具体文章）都可能显示TOC
+  // 具体是否显示由TOC组件根据实际解析到的标题数量决定
+  return true
 })
 
 // 调试信息

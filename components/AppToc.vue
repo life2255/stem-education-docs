@@ -1,6 +1,6 @@
 <!-- File: components/AppToc.vue -->
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4" v-if="shouldShowToc">
     <!-- 简化的目录标题 -->
     <div class="pb-3 border-b border-gray-200 dark:border-gray-700">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
@@ -12,8 +12,7 @@
     <!-- 目录列表 -->
     <nav 
       ref="tocContainer"
-      class="space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" 
-      v-if="headings.length > 0"
+      class="space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
     >
       <a
         v-for="heading in headings"
@@ -32,15 +31,6 @@
         <span class="line-clamp-3 leading-tight">{{ heading.text }}</span>
       </a>
     </nav>
-
-    <!-- 空状态 -->
-    <div v-else class="text-center py-8">
-      <UIcon 
-        name="i-heroicons-document-text" 
-        class="w-6 h-6 text-gray-300 dark:text-gray-600 mx-auto mb-2"
-      />
-      <p class="text-xs text-gray-500 dark:text-gray-400">暂无目录</p>
-    </div>
 
     <!-- 简化的快捷操作 -->
     <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -69,6 +59,12 @@ const headings = ref<TocHeading[]>([])
 const activeHeading = ref<string>('')
 const tocContainer = ref<HTMLElement>()
 const activeHeadingRef = ref<HTMLElement>()
+
+// 是否应该显示TOC - 基于实际内容决定
+const shouldShowToc = computed(() => {
+  // 至少要有2个标题才显示TOC，避免只有一个主标题的情况
+  return headings.value.length >= 2
+})
 
 // 获取标题级别对应的样式类 - 更紧凑的间距
 const getHeadingClass = (depth: number): string => {
@@ -188,6 +184,7 @@ const parseHeadings = () => {
   
   headings.value = newHeadings
   console.log('解析到的文章标题:', newHeadings)
+  console.log('是否显示TOC:', newHeadings.length >= 2)
 }
 
 // 计算活跃标题 - 只考虑文章内容区域

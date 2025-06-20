@@ -1,6 +1,7 @@
 ---
-title: 化学
-description: 研究物质的组成、性质和变化规律
+title: 碱金属
+description: 碱金属元素的性质与反应
+_path: /chemistry/inorganic-chemistry/alkalai-metal/
 navigation:
   title: 碱金属
 ---

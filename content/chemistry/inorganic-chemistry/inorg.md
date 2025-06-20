@@ -1,13 +1,13 @@
 ---
-title: 无机化学
+title: 无机化学基础
 description: 无机化学基础理论与应用
+_path: /chemistry/inorganic-chemistry/inorg
 subject: chemistry
 category: inorganic
 difficulty: intermediate  
 readingTime: 20分钟
 tags: [无机化学, 元素周期表, 化学键]
 ---
-
 # 无机化学
 
 无机化学是化学的重要分支，主要研究除碳氢化合物及其衍生物以外的所有元素及其化合物的组成、结构、性质和变化规律。

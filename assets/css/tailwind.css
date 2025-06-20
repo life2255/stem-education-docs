@@ -43,48 +43,7 @@
     scrollbar-color: theme('colors.gray.600') theme('colors.gray.800');
   }
 
-  /* MathJax 3 样式优化 */
-  mjx-container {
-    @apply my-4;
-    line-height: 1.2 !important;
-  }
-
-  /* 行内公式样式 */
-  mjx-container[display="false"] {
-    @apply inline-block mx-1;
-    vertical-align: middle;
-  }
-
-  /* 块级公式样式 */
-  mjx-container[display="true"] {
-    @apply block text-center;
-    margin: 1.5rem auto !important;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  /* 深色模式下的数学公式 */
-  .dark mjx-container svg {
-    color: white !important;
-  }
-
-  .dark mjx-container [data-mml-node="merror"] {
-    color: #ef4444 !important;
-  }
-
-  /* 数学公式字体优化 */
-  mjx-container {
-    font-display: swap;
-    font-size: 1.1em !important;
-  }
-
-  /* 响应式数学公式 */
-  @media (max-width: 640px) {
-    mjx-container[display="true"] {
-      font-size: 0.9em !important;
-      margin: 1rem auto !important;
-    }
-  }
+ 
 }
 
 /* 组件样式 */
@@ -388,10 +347,7 @@
     -webkit-print-color-adjust: exact !important;
   }
 
-  /* 数学公式打印优化 */
-  mjx-container {
-    break-inside: avoid;
-  }
+
 
   /* Mermaid 图表打印优化 */
   .mermaid {
@@ -405,9 +361,9 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.3ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.3ms !important;
   }
 }
 
@@ -421,42 +377,9 @@
     @apply border-2;
   }
 
-  /* 高对比度下的数学公式 */
-  mjx-container {
-    font-weight: 600 !important;
-  }
 
-  .dark mjx-container svg {
-    filter: contrast(1.5) brightness(1.2);
-  }
 }
 
-/* 内联数学公式优化 */
-mjx-container[display="false"] {
-  font-size: 1em !important;
-  margin: 0 2px;
-  vertical-align: baseline;
-}
 
-/* 块级数学公式优化 */
-mjx-container[display="true"] {
-  margin: 1.5em auto !important;
-  padding: 0.5em 0;
-  text-align: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-}
 
-/* MathJax 错误样式 */
-mjx-merror {
-  color: #dc2626 !important;
-  background-color: #fef2f2 !important;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
 
-.dark mjx-merror {
-  color: #fca5a5 !important;
-  background-color: #7f1d1d !important;
-}

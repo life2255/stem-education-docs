@@ -1,4 +1,5 @@
 <!-- File: components/AppSidebar.vue -->
+<!-- 修复版本：避免在 useAsyncData 中传递复杂对象 -->
 <template>
   <div class="h-full">
     <!-- 学科首页：显示分类导航 -->
@@ -49,7 +50,7 @@
         </p>
       </div>
 
-      <!-- 导航树 - 移除展开状态管理 -->
+      <!-- 导航树 -->
       <nav class="space-y-2">
         <SimpleNavigationItem
           v-for="item in navigation"
@@ -87,13 +88,9 @@ const { getCategoryNavigation, getSubjectById, getCategoryById } = useNavigation
 // 计算当前路径段
 const pathSegments = computed(() => route.path.split('/').filter(Boolean))
 
-// 当前学科
+// 简化的响应式状态 - 避免复杂对象
 const currentSubject = ref<any>(null)
-
-// 当前分类
-const currentCategory = ref<any>(null)
-
-// 导航数据
+const currentCategory = ref<any>(null)  
 const navigation = ref<NavigationItem[]>([])
 
 // 判断是否为学科首页
@@ -101,31 +98,52 @@ const isSubjectHomepage = computed(() => {
   return pathSegments.value.length === 1 && currentSubject.value !== null
 })
 
-// 加载数据
+// 加载数据的函数 - 确保返回的都是纯对象
 const loadData = async () => {
-  // 重置状态
-  currentSubject.value = null
-  currentCategory.value = null
-  navigation.value = []
+  try {
+    // 重置状态
+    currentSubject.value = null
+    currentCategory.value = null
+    navigation.value = []
 
-  if (pathSegments.value.length === 0) return
+    if (pathSegments.value.length === 0) return
 
-  // 加载学科信息
-  if (pathSegments.value.length >= 1) {
-    currentSubject.value = await getSubjectById(pathSegments.value[0])
-  }
+    // 加载学科信息
+    if (pathSegments.value.length >= 1) {
+      const subject = await getSubjectById(pathSegments.value[0])
+      // 确保是纯对象
+      currentSubject.value = subject ? JSON.parse(JSON.stringify(subject)) : null
+    }
 
-  // 加载分类信息和导航
-  if (pathSegments.value.length >= 2 && currentSubject.value) {
-    currentCategory.value = await getCategoryById(pathSegments.value[0], pathSegments.value[1])
-    
-    const categoryPath = `/${pathSegments.value[0]}/${pathSegments.value[1]}`
-    navigation.value = await getCategoryNavigation(categoryPath)
+    // 加载分类信息和导航
+    if (pathSegments.value.length >= 2 && currentSubject.value) {
+      const category = await getCategoryById(pathSegments.value[0], pathSegments.value[1])
+      // 确保是纯对象
+      currentCategory.value = category ? JSON.parse(JSON.stringify(category)) : null
+      
+      const categoryPath = `/${pathSegments.value[0]}/${pathSegments.value[1]}`
+      const nav = await getCategoryNavigation(categoryPath)
+      // 确保是纯对象数组
+      navigation.value = JSON.parse(JSON.stringify(nav))
+    }
+  } catch (error) {
+    console.error('加载侧边栏数据失败:', error)
+    // 重置到安全状态
+    currentSubject.value = null
+    currentCategory.value = null
+    navigation.value = []
   }
 }
 
-// 监听路由变化
+// 使用 watch 而不是 useAsyncData 来避免序列化问题
 watch(() => route.path, () => {
   loadData()
 }, { immediate: true })
+
+// 确保在组件销毁时清理状态
+onUnmounted(() => {
+  currentSubject.value = null
+  currentCategory.value = null
+  navigation.value = []
+})
 </script>

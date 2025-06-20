@@ -1,5 +1,5 @@
 // File: composables/useNavigation.ts
-// 混合导航系统：配置 + 自动发现（无缓存版本，过滤index.md）
+// 修复版本：确保所有返回的数据都是可序列化的
 
 import { navigationConfig, findNavItemByPath, getBreadcrumbsFromConfig } from '~/config/navigation.config'
 import type { Subject, Category } from '~/config/navigation.config'
@@ -16,15 +16,15 @@ export interface NavigationItem {
 }
 
 export const useNavigation = () => {
-  // 获取所有学科 - 直接返回配置
+  // 获取所有学科 - 返回序列化友好的数据
   const getSubjects = async (): Promise<Subject[]> => {
-    return Promise.resolve(navigationConfig)
+    return Promise.resolve(JSON.parse(JSON.stringify(navigationConfig)))
   }
 
   // 根据学科ID获取学科信息
   const getSubjectById = async (subjectId: string): Promise<Subject | null> => {
     const subject = navigationConfig.find(s => s.id === subjectId)
-    return Promise.resolve(subject || null)
+    return Promise.resolve(subject ? JSON.parse(JSON.stringify(subject)) : null)
   }
 
   // 根据学科ID和分类ID获取分类信息
@@ -36,15 +36,15 @@ export const useNavigation = () => {
       c.id === categoryId || 
       c.path === `/${subjectId}/${categoryId}`
     )
-    return Promise.resolve(category || null)
+    return Promise.resolve(category ? JSON.parse(JSON.stringify(category)) : null)
   }
 
   // 格式化标题：去掉.md，去掉数字前缀，替换连字符
   const formatTitle = (name: string): string => {
     return name
-      .replace(/\.md$/, '')              // 去掉 .md
-      .replace(/^[\d]+\./, '')           // 去掉数字前缀 "1."
-      .replace(/[-_]/g, ' ')             // 替换连字符和下划线
+      .replace(/\.md$/, '')
+      .replace(/^[\d]+\./, '')
+      .replace(/[-_]/g, ' ')
       .trim()
   }
 
@@ -55,7 +55,7 @@ export const useNavigation = () => {
     return fileName === 'index' || fileName === 'index.md'
   }
 
-  // 递归构建导航项（从 Nuxt Content 数据）
+  // 递归构建导航项（确保返回纯对象）
   const buildNavigationItem = async (node: any): Promise<NavigationItem | null> => {
     const pathSegments = node._path?.split('/').filter(Boolean) || []
     const isDirectory = !!(node.children && node.children.length > 0)
@@ -66,53 +66,51 @@ export const useNavigation = () => {
       itemName = pathSegments[pathSegments.length - 1]
     }
 
-    // 如果是 index.md 文件且不是目录，则跳过（不在侧边栏显示）
+    // 如果是 index.md 文件且不是目录，则跳过
     if (!isDirectory && isIndexFile(node._path)) {
-      console.log('跳过 index 文件:', node._path)
       return null
     }
 
-    // 获取标题 - 优先使用文档的title字段，其次使用格式化的文件名
+    // 获取标题
     let title: string
     if (node.title) {
-      title = node.title
+      title = String(node.title) // 确保是字符串
     } else {
       title = formatTitle(itemName)
     }
 
+    // 创建纯对象（避免任何非序列化属性）
     const item: NavigationItem = {
       title,
-      _path: node._path || '',
+      _path: String(node._path || ''),
       isDirectory,
-      difficulty: node.difficulty,
-      description: node.description,
-      order: node.order || 0
+      difficulty: node.difficulty ? String(node.difficulty) : undefined,
+      description: node.description ? String(node.description) : undefined,
+      order: typeof node.order === 'number' ? node.order : 0
     }
 
     // 如果有子节点，递归处理
-    if (node.children && node.children.length > 0) {
+    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
       const childPromises = node.children.map((child: any) => buildNavigationItem(child))
       const children = await Promise.all(childPromises)
 
-      // 过滤掉 null 值（被跳过的 index 文件）
-      const validChildren = children.filter((child): child is NavigationItem => child !== null)
+      // 过滤掉 null 值并确保是纯对象数组
+      const validChildren = children
+        .filter((child): child is NavigationItem => child !== null)
+        .map(child => JSON.parse(JSON.stringify(child))) // 深拷贝确保纯对象
 
-      // 排序：先按 order 字段，再按标题
+      // 排序
       item.children = validChildren.sort((a: NavigationItem, b: NavigationItem) => {
-        // 首先按 order 排序
         if (a.order !== b.order) {
           return (a.order || 0) - (b.order || 0)
         }
         
-        // order 相同时，目录排在前面，文件排在后面
         if (a.isDirectory && !b.isDirectory) return -1
         if (!a.isDirectory && b.isDirectory) return 1
         
-        // 最后按标题字母顺序
         return a.title.localeCompare(b.title)
       })
 
-      // 如果过滤后没有子项了，说明只有 index.md，那么这个目录就不应该显示子项
       if (item.children.length === 0) {
         item.children = undefined
       }
@@ -124,12 +122,9 @@ export const useNavigation = () => {
   // 混合模式：获取分类的导航结构
   const getCategoryNavigation = async (categoryPath: string): Promise<NavigationItem[]> => {
     try {
-      console.log('混合模式获取分类导航:', categoryPath)
-
       // 检查是否在配置中存在
       const configItem = findNavItemByPath(categoryPath)
       if (!configItem) {
-        console.log('分类不在配置中，跳过自动发现:', categoryPath)
         return []
       }
 
@@ -142,7 +137,7 @@ export const useNavigation = () => {
           if (node._path === targetPath) {
             return node
           }
-          if (node.children) {
+          if (node.children && Array.isArray(node.children)) {
             const found = findCategoryNode(node.children, targetPath)
             if (found) return found
           }
@@ -151,44 +146,31 @@ export const useNavigation = () => {
       }
 
       const categoryNode = findCategoryNode(navigation, categoryPath)
-      console.log('找到分类节点:', categoryNode?.title || '未找到')
 
-      if (categoryNode && categoryNode.children) {
-        console.log('原始子节点数量:', categoryNode.children.length)
-        
+      if (categoryNode && categoryNode.children && Array.isArray(categoryNode.children)) {
         const itemPromises = categoryNode.children.map((child: any) => buildNavigationItem(child))
         const items = await Promise.all(itemPromises)
 
-        // 过滤掉 null 值（被跳过的 index 文件）
-        const validItems = items.filter((item): item is NavigationItem => item !== null)
+        // 过滤掉 null 值并确保返回纯对象数组
+        const validItems = items
+          .filter((item): item is NavigationItem => item !== null)
+          .map(item => JSON.parse(JSON.stringify(item))) // 深拷贝确保纯对象
 
         // 最终排序
         const sortedItems = validItems.sort((a: NavigationItem, b: NavigationItem) => {
-          // 首先按 order 排序
           if (a.order !== b.order) {
             return (a.order || 0) - (b.order || 0)
           }
           
-          // order 相同时，目录排在前面，文件排在后面
           if (a.isDirectory && !b.isDirectory) return -1
           if (!a.isDirectory && b.isDirectory) return 1
           
-          // 最后按标题排序
           return a.title.localeCompare(b.title)
         })
-
-        console.log('过滤后的导航项数量:', sortedItems.length)
-        console.log('处理后的导航项:', sortedItems.map(item => ({
-          title: item.title,
-          path: item._path,
-          isDirectory: item.isDirectory,
-          order: item.order
-        })))
 
         return sortedItems
       }
 
-      console.log('分类节点没有子内容')
       return []
     } catch (error) {
       console.error(`获取分类导航失败 ${categoryPath}:`, error)
@@ -198,7 +180,8 @@ export const useNavigation = () => {
 
   // 获取面包屑导航
   const getBreadcrumbs = async (currentPath: string) => {
-    return Promise.resolve(getBreadcrumbsFromConfig(currentPath))
+    const breadcrumbs = getBreadcrumbsFromConfig(currentPath)
+    return Promise.resolve(JSON.parse(JSON.stringify(breadcrumbs)))
   }
 
   return {

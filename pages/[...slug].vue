@@ -1,5 +1,5 @@
-// File: pages/[...slug].vue 
-// 保持原有结构，让插件自动处理数学公式
+<!-- File: pages/[...slug].vue -->
+<!-- 修复版本：确保 useAsyncData 中的数据是可序列化的 -->
 
 <script setup lang="ts">
 const route = useRoute()
@@ -7,9 +7,45 @@ const route = useRoute()
 // 从 route.params.slug 构建查询路径
 const path = '/' + (Array.isArray(route.params.slug) ? route.params.slug.join('/') : route.params.slug)
 
-// 获取页面内容
-const { data, pending, error } = await useAsyncData(`content-${path}`, () => {
-  return queryContent(path).findOne()
+// 获取页面内容 - 使用 transform 确保数据是可序列化的
+const { data, pending, error } = await useAsyncData(`content-${path}`, async () => {
+  try {
+    const content = await queryContent(path).findOne()
+    
+    // 如果没有找到内容，返回 null
+    if (!content) {
+      return null
+    }
+    
+    // 创建一个纯对象，只包含需要的属性
+    const serializedContent = {
+      title: String(content.title || ''),
+      description: String(content.description || ''),
+      _path: String(content._path || ''),
+      body: content.body || null,
+      toc: content.toc || null,
+      // 只包含基本的元数据
+      difficulty: content.difficulty ? String(content.difficulty) : undefined,
+      readingTime: content.readingTime ? String(content.readingTime) : undefined,
+      tags: Array.isArray(content.tags) ? content.tags.map(tag => String(tag)) : undefined,
+      createdAt: content.createdAt ? String(content.createdAt) : undefined,
+      updatedAt: content.updatedAt ? String(content.updatedAt) : undefined,
+      // 确保_dir是纯对象
+      _dir: content._dir ? {
+        title: String(content._dir.title || ''),
+        description: String(content._dir.description || '')
+      } : undefined
+    }
+    
+    return serializedContent
+  } catch (err) {
+    console.error('加载内容失败:', err)
+    return null
+  }
+}, {
+  // 添加序列化选项
+  server: true,
+  default: () => null
 })
 
 // 设置页面元数据
@@ -37,18 +73,20 @@ const getDifficultyIcon = (difficulty: string): string => {
   return icons[difficulty as keyof typeof icons] || 'i-heroicons-academic-cap-solid'
 }
 
-// 面包屑导航
+// 面包屑导航 - 简化实现避免复杂对象
 const breadcrumbs = computed(() => {
   if (!data.value || !data.value._path) {
     return []
   }
+  
   const pathSegments = data.value._path.split('/').filter(Boolean)
   let currentPath = ''
+  
   return pathSegments.map((segment, index) => {
     currentPath += `/${segment}`
-    const title = data.value._dir?.title || segment
+    // 创建纯对象
     return {
-      title: title,
+      title: segment.replace(/[-_]/g, ' ').replace(/^\d+\./, '').trim(),
       path: currentPath,
       isCurrent: index === pathSegments.length - 1
     }
@@ -67,7 +105,9 @@ const formatDate = (date: string | Date) => {
 
 // 分享文章
 const shareArticle = async () => {
-  if (navigator.share && data.value) {
+  if (!data.value) return
+  
+  if (navigator.share) {
     try {
       await navigator.share({
         title: data.value.title,
@@ -102,7 +142,8 @@ const articleContent = ref<HTMLElement>()
 
 // 确保标题有ID
 onMounted(() => {
-  if (error.value) return
+  if (error.value || !data.value) return
+  
   nextTick(() => {
     if (articleContent.value) {
       const headings = articleContent.value.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -115,6 +156,13 @@ onMounted(() => {
       })
     }
   })
+})
+
+// 清理函数
+onUnmounted(() => {
+  if (articleContent.value) {
+    articleContent.value = undefined
+  }
 })
 </script>
 
@@ -142,85 +190,83 @@ onMounted(() => {
     </div>
 
     <!-- 内容展示 -->
-    <ContentDoc v-else v-slot="{ doc }">
-      <div class="max-w-4xl mx-auto">
-        <!-- 文章头部 -->
-        <header class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-          <!-- 面包屑导航 -->
-          <nav v-if="breadcrumbs.length > 0" class="flex items-center flex-wrap gap-x-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-            <NuxtLink to="/" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-              首页
+    <div v-else class="max-w-4xl mx-auto">
+      <!-- 文章头部 -->
+      <header class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <!-- 面包屑导航 -->
+        <nav v-if="breadcrumbs.length > 0" class="flex items-center flex-wrap gap-x-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <NuxtLink to="/" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+            首页
+          </NuxtLink>
+          <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
+            <UIcon name="i-heroicons-chevron-right-solid" class="w-3 h-3" />
+            <NuxtLink
+              v-if="!crumb.isCurrent"
+              :to="crumb.path"
+              class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            >
+              {{ crumb.title }}
             </NuxtLink>
-            <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
-              <UIcon name="i-heroicons-chevron-right-solid" class="w-3 h-3" />
-              <NuxtLink
-                v-if="!crumb.isCurrent"
-                :to="crumb.path"
-                class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-              >
-                {{ crumb.title }}
-              </NuxtLink>
-              <span v-else class="text-gray-900 dark:text-white font-medium">
-                {{ doc.title }}
-              </span>
-            </template>
-          </nav>
+            <span v-else class="text-gray-900 dark:text-white font-medium">
+              {{ data.title }}
+            </span>
+          </template>
+        </nav>
 
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                {{ doc.title }}
-              </h1>
-              <div v-if="doc.description" class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
-                {{ doc.description }}
-              </div>
-            </div>
-            <div class="flex items-center space-x-2 ml-6">
-              <UButton icon="i-heroicons-share-solid" color="gray" variant="outline" size="sm" aria-label="分享" @click="shareArticle" />
-              <UButton icon="i-heroicons-bookmark-solid" color="gray" variant="outline" size="sm" aria-label="收藏" @click="bookmarkArticle" />
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              {{ data.title }}
+            </h1>
+            <div v-if="data.description" class="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+              {{ data.description }}
             </div>
           </div>
-        </header>
+          <div class="flex items-center space-x-2 ml-6">
+            <UButton icon="i-heroicons-share-solid" color="gray" variant="outline" size="sm" aria-label="分享" @click="shareArticle" />
+            <UButton icon="i-heroicons-bookmark-solid" color="gray" variant="outline" size="sm" aria-label="收藏" @click="bookmarkArticle" />
+          </div>
+        </div>
+      </header>
 
-        <!-- 文章内容 - 保持原有的 ContentRenderer -->
-        <article 
-          id="article-content"
-          class="prose prose-gray max-w-none dark:prose-invert"
-          ref="articleContent"
-        >
-          <ContentRenderer :value="doc" />
-        </article>
+      <!-- 文章内容 -->
+      <article 
+        id="article-content"
+        class="prose prose-gray max-w-none dark:prose-invert"
+        ref="articleContent"
+      >
+        <!-- 使用 ContentRenderer 渲染内容 -->
+        <ContentRenderer v-if="data" :value="data" />
+      </article>
 
-        <!-- 文章底部 -->
-        <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-8">
-          <!-- 导航 -->
-          <ContentNavigation v-slot="{ prev, next }" class="pt-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <NuxtLink v-if="prev" :to="prev._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200">
-                <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  <UIcon name="i-heroicons-arrow-left-solid" class="w-4 h-4" />
-                  上一篇
-                </div>
-                <div class="font-medium text-gray-900 dark:text-white group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
-                  {{ prev.title }}
-                </div>
-              </NuxtLink>
-              <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">没有上一篇了</span>
-              <NuxtLink v-if="next" :to="next._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 text-right">
-                <div class="flex items-center justify-end gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  下一篇
-                  <UIcon name="i-heroicons-arrow-right-solid" class="w-4 h-4" />
-                </div>
-                <div class="font-medium text-gray-900 dark:text-white group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
-                  {{ next.title }}
-                </div>
-              </NuxtLink>
-              <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">已是最后一篇</span>
-            </div>
-          </ContentNavigation>
-        </footer>
-      </div>
-    </ContentDoc>
+      <!-- 文章底部导航 -->
+      <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-8">
+        <ContentNavigation v-slot="{ prev, next }" class="pt-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <NuxtLink v-if="prev" :to="prev._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200">
+              <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <UIcon name="i-heroicons-arrow-left-solid" class="w-4 h-4" />
+                上一篇
+              </div>
+              <div class="font-medium text-gray-900 dark:text-white group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+                {{ prev.title }}
+              </div>
+            </NuxtLink>
+            <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">没有上一篇了</span>
+            <NuxtLink v-if="next" :to="next._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 text-right">
+              <div class="flex items-center justify-end gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                下一篇
+                <UIcon name="i-heroicons-arrow-right-solid" class="w-4 h-4" />
+              </div>
+              <div class="font-medium text-gray-900 dark:text-white group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+                {{ next.title }}
+              </div>
+            </NuxtLink>
+            <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">已是最后一篇</span>
+          </div>
+        </ContentNavigation>
+      </footer>
+    </div>
   </div>
 </template>
 

@@ -1,6 +1,7 @@
 ---
 title: 二维直线运动
 description: 了解描述物体运动的基本概念和公式
+_path: /physics/mechanics/运动学/二维运动/
 subject: physics
 category: mechanics
 difficulty: beginner

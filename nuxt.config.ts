@@ -4,6 +4,16 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
+  // [最终策略]
+  hooks: {
+    // 只保留策略一: 在源头确保内容ID的Unicode标准化 (NFC)，这是一个好习惯。
+    'content:file:beforeParse': (file) => {
+      if (file._id) {
+        file._id = file._id.normalize('NFC')
+      }
+    }
+  },
+
   // 模块配置
   modules: [
     '@nuxt/content',
@@ -23,29 +33,20 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
-  // 内容配置 - 关键更新
+  // 内容配置
   content: {
-    // 文档驱动配置
-    documentDriven: false, // 关闭文档驱动模式，使用自定义路由
-    
-    // Markdown 配置
+    documentDriven: false,
     markdown: {
       remarkPlugins: [],
       rehypePlugins: []
     },
-    
-    // 高亮配置
     highlight: {
       theme: 'github-dark',
       preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown']
     },
-    
-    // 导航配置
     navigation: {
       fields: ['title', 'description', 'difficulty', 'order', 'icon']
     },
-    
-    // 关键：禁用路径的自动 slugify
     experimental: {
       clientDB: true
     }
@@ -54,7 +55,7 @@ export default defineNuxtConfig({
   // 路由配置
   router: {
     options: {
-      strict: false // 允许更灵活的路由匹配
+      strict: false
     }
   },
 
@@ -89,10 +90,10 @@ export default defineNuxtConfig({
     port: 3000
   },
 
-  // Vite 配置 - 确保正确处理中文文件名
+  // Vite 配置
   vite: {
     fs: {
-      strict: false // 允许访问项目外的文件
+      strict: false
     }
   }
 })

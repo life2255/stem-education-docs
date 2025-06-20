@@ -1,4 +1,4 @@
-<!-- File: components/SidebarNavigationItem.vue -->
+<!-- File: components/ModernNavigationItem.vue -->
 <template>
   <div class="relative">
     <!-- 目录项 -->
@@ -8,10 +8,17 @@
       :class="[
         'group relative flex items-center px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
         'hover:bg-gray-50 dark:hover:bg-gray-800/50',
-        hasActiveChild ? 'bg-primary-50/30 dark:bg-primary-900/10' : '',
+        isActive ? 'bg-primary-50/50 dark:bg-primary-900/20' : '',
         levelPaddingClass
       ]"
     >
+      <!-- 缩进线条 -->
+      <div
+        v-if="level > 0"
+        class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"
+        :style="{ left: `${(level - 1) * 20 + 12}px` }"
+      />
+
       <!-- 展开/收起图标 -->
       <button
         class="w-5 h-5 mr-2 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -19,23 +26,26 @@
       >
         <UIcon
           :name="isExpanded ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-right'"
-          class="w-4 h-4 text-gray-500 dark:text-gray-400"
+          class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          :class="{ 'rotate-0': !isExpanded }"
         />
       </button>
 
       <!-- 文件夹图标 -->
-      <UIcon
-        :name="isExpanded ? 'i-heroicons-folder-open' : 'i-heroicons-folder'"
-        :class="[
-          'w-5 h-5 mr-2',
-          hasActiveChild ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'
-        ]"
-      />
+      <div :class="[
+        'w-5 h-5 mr-2 flex items-center justify-center',
+        isActive || hasActiveChild ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'
+      ]">
+        <UIcon
+          :name="isExpanded ? 'i-heroicons-folder-open' : 'i-heroicons-folder'"
+          class="w-5 h-5"
+        />
+      </div>
 
       <!-- 目录名称 -->
       <span :class="[
         'flex-1 text-sm font-medium',
-        hasActiveChild 
+        isActive || hasActiveChild 
           ? 'text-gray-900 dark:text-white' 
           : 'text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
       ]">
@@ -45,7 +55,7 @@
       <!-- 子项数量 -->
       <span
         v-if="item.children && item.children.length > 0"
-        class="text-xs text-gray-400 dark:text-gray-500"
+        class="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded"
       >
         {{ item.children.length }}
       </span>
@@ -58,11 +68,18 @@
       :class="[
         'group relative flex items-center px-3 py-2 rounded-lg transition-all duration-200',
         isActive
-          ? 'bg-primary-500 text-white shadow-sm'
+          ? 'bg-primary-500 text-white shadow-md hover:bg-primary-600'
           : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300',
         levelPaddingClass
       ]"
     >
+      <!-- 缩进线条 -->
+      <div
+        v-if="level > 0"
+        class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"
+        :style="{ left: `${(level - 1) * 20 + 12}px` }"
+      />
+
       <!-- 文件图标 -->
       <div class="w-5 h-5 mr-2 flex items-center justify-center">
         <div :class="[
@@ -76,7 +93,9 @@
       <!-- 文件名 -->
       <span :class="[
         'flex-1 text-sm',
-        isActive ? 'font-medium' : 'group-hover:text-gray-900 dark:group-hover:text-white'
+        isActive
+          ? 'font-medium'
+          : 'group-hover:text-gray-900 dark:group-hover:text-white'
       ]">
         {{ item.title }}
       </span>
@@ -92,15 +111,21 @@
         ]"
         :title="difficultyLabels[item.difficulty]"
       />
+
+      <!-- 活跃状态右侧指示器 -->
+      <div
+        v-if="isActive"
+        class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white/30 rounded-l-full"
+      />
     </NuxtLink>
 
     <!-- 子项容器 -->
     <div
       v-if="item.children && item.children.length > 0"
       v-show="isExpanded"
-      class="mt-1 space-y-0.5"
+      class="relative mt-1 space-y-0.5"
     >
-      <SidebarNavigationItem
+      <ModernNavigationItem
         v-for="child in item.children"
         :key="child._path"
         :item="child"
@@ -163,8 +188,14 @@ const hasActiveChild = computed(() => {
 
 // 层级缩进
 const levelPaddingClass = computed(() => {
-  const paddingLeft = 12 + (props.level * 20)
-  return { paddingLeft: `${paddingLeft}px` }
+  const baseIndent = 12 // 基础缩进 (px)
+  const levelIndent = 20 // 每层缩进 (px)
+  const totalIndent = baseIndent + (props.level * levelIndent)
+  
+  // 使用内联样式以支持动态缩进
+  return {
+    paddingLeft: `${totalIndent}px`
+  }
 })
 
 // 处理展开/收起
@@ -174,3 +205,22 @@ const handleToggle = () => {
   }
 }
 </script>
+
+<style scoped>
+/* 平滑过渡动画 */
+.rotate-0 {
+  transform: rotate(0deg);
+}
+
+/* 确保链接占满整个区域 */
+a {
+  text-decoration: none;
+}
+
+/* 优化触摸设备的点击区域 */
+@media (hover: none) {
+  .group {
+    min-height: 44px;
+  }
+}
+</style>

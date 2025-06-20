@@ -7,7 +7,7 @@
         <!-- Logo -->
         <NuxtLink
           to="/"
-          class="flex items-center space-x-3 px-3 py-2 -mx-3 -my-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+          class="flex items-center space-x-3 px-3 py-2 -mx-3 -my-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
         >
           <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md">
             <span class="text-white font-bold text-lg">S</span>
@@ -21,9 +21,9 @@
             v-for="subject in subjects"
             :key="subject.id"
             :to="subject.path"
-            @click="handleSubjectClick(subject.id)"
+            @click="activeSubject = subject.id"
             :class="[
-              'flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+              'flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               activeSubject === subject.id
                 ? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
@@ -43,7 +43,7 @@
             variant="ghost"
             size="sm"
             aria-label="搜索"
-            @click="isSearchOpen = true"
+            @click="$emit('open-search')"
           />
 
           <!-- 主题切换 -->
@@ -85,7 +85,7 @@
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div
-        v-if="activeSubject && currentSubject && currentSubject.categories && currentSubject.categories.length > 0"
+        v-if="currentSubject && currentSubject.categories && currentSubject.categories.length > 0"
         class="bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700"
       >
         <div class="max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6">
@@ -97,7 +97,7 @@
                 <NuxtLink
                   :to="currentSubject.path"
                   :class="[
-                    'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
+                    'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap',
                     route.path === currentSubject.path
                       ? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-gray-700/70 hover:text-gray-900 dark:hover:text-white'
@@ -113,7 +113,7 @@
                   :key="category.id"
                   :to="category.path"
                   :class="[
-                    'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800',
+                    'flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap',
                     route.path.startsWith(category.path)
                       ? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-gray-700/70 hover:text-gray-900 dark:hover:text-white'
@@ -131,19 +131,11 @@
                 <UIcon name="i-heroicons-folder" class="w-3 h-3" />
                 <span>{{ currentSubject.categories.length }} 个分类</span>
               </div>
-              <div class="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <div class="flex items-center space-x-1">
-                <UIcon name="i-heroicons-academic-cap" class="w-3 h-3" />
-                <span>{{ currentSubject.title }}</span>
-              </div>
             </div>
           </div>
         </div>
       </div>
     </Transition>
-
-    <!-- 搜索模态框 -->
-    <AppSearch v-model="isSearchOpen" />
 
     <!-- 移动端菜单 -->
     <USlideover v-model="isMobileMenuOpen">
@@ -211,48 +203,33 @@
 </template>
 
 <script setup lang="ts">
+import { navigationConfig } from '~/config/navigation.config'
+
 const route = useRoute()
 const colorMode = useColorMode()
-const { getSubjects, getSubjectById } = useNavigation()
 
 // 响应式状态
 const isDark = computed(() => colorMode.value === 'dark')
-const isSearchOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 const activeSubject = ref<string | null>(null)
 
-// 获取学科数据（改为异步获取）
-const { data: subjects, pending: subjectsLoading } = await useAsyncData('subjects', () => getSubjects())
+// 直接使用配置中的学科数据
+const subjects = navigationConfig
 
-console.log('学科数据:', subjects.value)
-
-// 当前学科信息（改为异步获取）
-const { data: currentSubject } = await useAsyncData(
-  `current-subject-${activeSubject.value}`,
-  async () => {
-    if (!activeSubject.value) return null
-    return await getSubjectById(activeSubject.value)
-  },
-  {
-    watch: [activeSubject]
-  }
-)
+// 当前学科
+const currentSubject = computed(() => {
+  if (!activeSubject.value) return null
+  return subjects.find(s => s.id === activeSubject.value)
+})
 
 // 根据路由自动设置 activeSubject
 watch(() => route.path, (newPath) => {
-  console.log('路由变化:', newPath)
   const pathSegments = newPath.split('/').filter(Boolean)
-
   if (pathSegments.length > 0) {
     const subjectId = pathSegments[0]
-    console.log('检测到学科ID:', subjectId)
-
-    // 检查这个学科是否存在
-    if (subjects.value?.some(s => s.id === subjectId)) {
-      console.log('设置 activeSubject 为:', subjectId)
+    if (subjects.some(s => s.id === subjectId)) {
       activeSubject.value = subjectId
     } else {
-      console.log('学科不存在，可用学科:', subjects.value?.map(s => s.id))
       activeSubject.value = null
     }
   } else {
@@ -260,16 +237,9 @@ watch(() => route.path, (newPath) => {
   }
 }, { immediate: true })
 
-// 处理学科点击
-const handleSubjectClick = (subjectId: string) => {
-  console.log('点击学科:', subjectId)
-  activeSubject.value = subjectId
-}
-
 // 处理移动端学科点击
 const handleMobileSubjectClick = (subjectId: string) => {
   if (activeSubject.value === subjectId) {
-    // 如果已经是当前学科，则收起菜单
     activeSubject.value = null
   } else {
     activeSubject.value = subjectId
@@ -281,19 +251,8 @@ const toggleColorMode = () => {
   colorMode.preference = isDark.value ? 'light' : 'dark'
 }
 
-// 调试信息
-watchEffect(() => {
-  console.log('=== Header 状态 ===')
-  console.log('当前路径:', route.path)
-  console.log('激活学科:', activeSubject.value)
-  console.log('当前学科:', currentSubject.value?.id)
-  console.log('分类数量:', currentSubject.value?.categories?.length || 0)
-  console.log('二级菜单显示条件:', {
-    hasActiveSubject: !!activeSubject.value,
-    hasCurrentSubject: !!currentSubject.value,
-    hasCategories: (currentSubject.value?.categories?.length || 0) > 0
-  })
-})
+// 定义事件
+defineEmits(['open-search'])
 </script>
 
 <style scoped>
@@ -306,12 +265,6 @@ watchEffect(() => {
   display: none;
 }
 
-/* 优化二级菜单的毛玻璃效果 */
-.backdrop-blur-sm {
-  backdrop-filter: blur(4px);
-}
-
-/* 优化过渡动画 */
 .max-h-96 {
   max-height: 24rem;
 }

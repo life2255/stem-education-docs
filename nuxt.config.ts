@@ -1,5 +1,5 @@
 // File: nuxt.config.ts
-// https://nuxt.com/docs/api/configuration/nuxt-config
+// 更新配置以更好地支持中文路径
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -18,24 +18,43 @@ export default defineNuxtConfig({
     }
   },
 
-  // 解决中间件冲突的关键配置
+  // 解决中间件冲突
   experimental: {
-    // 方案一：完全禁用（推荐用于开发环境）
     appManifest: false
-    
-    // 方案二：启用但允许覆盖（推荐用于生产环境）
-    // appManifest: true
   },
 
-  // 内容配置
+  // 内容配置 - 关键更新
   content: {
-    highlight: {
-      theme: 'github-dark',
-      preload: ['javascript', 'typescript', 'python', 'java', 'cpp']
-    },
+    // 文档驱动配置
+    documentDriven: false, // 关闭文档驱动模式，使用自定义路由
+    
+    // Markdown 配置
     markdown: {
       remarkPlugins: [],
       rehypePlugins: []
+    },
+    
+    // 高亮配置
+    highlight: {
+      theme: 'github-dark',
+      preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown']
+    },
+    
+    // 导航配置
+    navigation: {
+      fields: ['title', 'description', 'difficulty', 'order', 'icon']
+    },
+    
+    // 关键：禁用路径的自动 slugify
+    experimental: {
+      clientDB: true
+    }
+  },
+
+  // 路由配置
+  router: {
+    options: {
+      strict: false // 允许更灵活的路由匹配
     }
   },
 
@@ -68,12 +87,12 @@ export default defineNuxtConfig({
   // 开发服务器配置
   devServer: {
     port: 3000
-  }
+  },
 
-  // 备选方案：如果上面不行，尝试调整模块顺序
-  // modules: [
-  //   '@nuxtjs/tailwindcss',
-  //   '@nuxt/content', 
-  //   '@nuxt/ui'
-  // ],
+  // Vite 配置 - 确保正确处理中文文件名
+  vite: {
+    fs: {
+      strict: false // 允许访问项目外的文件
+    }
+  }
 })

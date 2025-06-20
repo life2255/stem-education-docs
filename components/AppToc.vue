@@ -3,8 +3,7 @@
   <div class="space-y-4" v-if="shouldShowToc">
     <!-- 简化的目录标题 -->
     <div class="pb-3 border-b border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
-        <UIcon name="i-heroicons-list-bullet" class="w-4 h-4 text-primary-600 dark:text-primary-400 mr-2" />
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
         目录
       </h3>
     </div>
@@ -21,10 +20,10 @@
         :href="`#${heading.id}`"
         @click.prevent="scrollToHeading(heading.id)"
         :class="[
-          'block py-1.5 px-2 text-sm transition-all duration-200 rounded border-l-2 border-transparent hover:border-primary-300 dark:hover:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800',
+          'block py-1.5 px-2 text-sm transition-colors duration-200',
           activeHeading === heading.id
-            ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300 font-medium'
-            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50',
+            ? 'text-green-600 dark:text-green-400 font-medium'
+            : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400',
           getHeadingClass(heading.depth)
         ]"
       >
@@ -66,15 +65,15 @@ const shouldShowToc = computed(() => {
   return headings.value.length >= 2
 })
 
-// 获取标题级别对应的样式类 - 更紧凑的间距
+// 获取标题级别对应的样式类 - 更简洁的间距
 const getHeadingClass = (depth: number): string => {
   const classes = {
     1: 'text-sm font-semibold',
     2: 'text-sm ml-2',
-    3: 'text-sm ml-4 opacity-90',
-    4: 'text-sm ml-6 opacity-80',
-    5: 'text-sm ml-8 opacity-70',
-    6: 'text-sm ml-10 opacity-60'
+    3: 'text-sm ml-4',
+    4: 'text-sm ml-6',
+    5: 'text-sm ml-8',
+    6: 'text-sm ml-10'
   }
   return classes[depth as keyof typeof classes] || classes[6]
 }
@@ -338,25 +337,5 @@ watch(activeHeading, () => {
 
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: rgb(107 114 128);
-}
-
-/* 活跃状态的特殊效果 */
-.bg-primary-50 {
-  position: relative;
-}
-
-.bg-primary-50::before {
-  content: '';
-  position: absolute;
-  left: -2px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, rgb(59 130 246), rgb(37 99 235));
-  border-radius: 1px;
-}
-
-.dark .bg-primary-900\/30::before {
-  background: linear-gradient(to bottom, rgb(59 130 246), rgb(37 99 235));
 }
 </style>

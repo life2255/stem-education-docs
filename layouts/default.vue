@@ -14,7 +14,7 @@
           'grid-cols-1'
         ]"
       >
-        <!-- 左侧栏 - 更靠左 -->
+        <!-- 左侧栏 - 保持原宽度 -->
         <aside 
           v-if="showSidebar" 
           :class="[
@@ -27,10 +27,11 @@
           </div>
         </aside>
 
-        <!-- 主要内容区域 -->
+        <!-- 主要内容区域 - 调整宽度 -->
         <main 
           :class="[
-            showSidebar && showToc ? 'col-span-8' :
+            // 关键修改：当同时显示左侧栏和TOC时，主内容从col-span-8改为col-span-7
+            showSidebar && showToc ? 'col-span-7' :
             showSidebar || showToc ? 'col-span-7' :
             'col-span-12',
             'min-w-0'
@@ -42,12 +43,13 @@
           </div>
         </main>
 
-        <!-- 右侧文章目录 - 更靠右 -->
+        <!-- 右侧文章目录 - 加宽 -->
         <aside 
           v-if="showToc"
           :class="[
             'sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent',
-            showSidebar ? 'col-span-2' : 'col-span-3'
+            // 关键修改：右侧TOC从col-span-2改为col-span-3
+            showSidebar ? 'col-span-3' : 'col-span-3'
           ]"
         >
           <div class="pl-2">
@@ -89,7 +91,6 @@ const showSidebar = computed(() => {
 })
 
 // 判断是否显示文章目录（TOC）
-// 改为基于实际内容而不是路径判断
 const showToc = computed(() => {
   // 首页不显示TOC
   if (route.path === '/') return false
@@ -106,24 +107,6 @@ const showToc = computed(() => {
   // 具体是否显示由TOC组件根据实际解析到的标题数量决定
   return true
 })
-
-// 调试信息
-if (process.dev) {
-  watchEffect(() => {
-    console.log('=== Layout Debug ===')
-    console.log('Route path:', route.path)
-    console.log('Show sidebar:', showSidebar.value)
-    console.log('Show TOC:', showToc.value)
-    console.log('Grid layout:', {
-      sidebar: showSidebar.value,
-      toc: showToc.value,
-      gridCols: showSidebar.value && showToc.value ? 12 : 
-                showSidebar.value || showToc.value ? 10 : 1,
-      mainCols: showSidebar.value && showToc.value ? 8 :
-                showSidebar.value || showToc.value ? 7 : 12
-    })
-  })
-}
 </script>
 
 <style>

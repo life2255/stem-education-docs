@@ -1,0 +1,118 @@
+/* File: assets/css/sidebar.css */
+
+/* 极简侧边栏样式 */
+
+/* 侧边栏淡入淡出动画 */
+.sidebar-fade-enter-active,
+.sidebar-fade-leave-active {
+  transition: all 0.25s ease-out;
+}
+
+.sidebar-fade-enter-from,
+.sidebar-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.sidebar-fade-enter-to,
+.sidebar-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 平滑颜色过渡 */
+.sidebar-nav a,
+.sidebar-nav div {
+  transition: color 0.2s ease;
+}
+
+/* 文本选择优化 */
+.sidebar-nav * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.sidebar-nav a {
+  user-select: auto;
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
+}
+
+/* 滚动条样式优化 */
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 2px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* 暗色模式滚动条 */
+.dark .sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.3);
+}
+
+.dark .sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.5);
+}
+
+/* 焦点样式 */
+.sidebar-nav a:focus-visible {
+  outline: 2px solid rgb(34, 197, 94);
+  outline-offset: 2px;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .sidebar-nav {
+    padding: 0.5rem;
+  }
+  
+  .sidebar-nav a,
+  .sidebar-nav div {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* 性能优化 */
+.sidebar-nav a,
+.sidebar-nav div {
+  contain: layout style paint;
+  will-change: color;
+}
+
+/* 无障碍支持 */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-nav a,
+  .sidebar-nav div,
+  .sidebar-fade-enter-active,
+  .sidebar-fade-leave-active {
+    transition: none;
+  }
+}
+
+/* 高对比度支持 */
+@media (prefers-contrast: high) {
+  .sidebar-nav a:hover {
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 4px;
+  }
+  
+  .sidebar-nav a.active {
+    background: rgba(34, 197, 94, 0.2);
+    border-radius: 4px;
+  }
+}

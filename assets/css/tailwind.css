@@ -1,4 +1,7 @@
-/* File: assets/css/tailwind.css - 修复警告并优化样式 */
+/* File: assets/css/tailwind.css */
+
+/* 导入侧边栏专用样式 - 必须在@tailwind之前 */
+@import './sidebar.css';
 
 @tailwind base;
 @tailwind components;
@@ -265,7 +268,7 @@
   }
 }
 
-/* 打印样式 - 修复警告 */
+/* 打印样式 */
 @media print {
   .no-print {
     display: none !important;
@@ -276,8 +279,8 @@
   }
 
   * {
-    print-color-adjust: exact !important; /* 修复：使用新的属性名 */
-    -webkit-print-color-adjust: exact !important; /* WebKit 前缀支持 */
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 }
 

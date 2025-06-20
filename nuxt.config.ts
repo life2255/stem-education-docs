@@ -1,5 +1,5 @@
 // File: nuxt.config.ts
-// 🎯 这就是我说的简化配置！只用 remark-math + 客户端处理
+// 🎯 KaTeX 方案：服务端渲染，性能最佳，无客户端问题
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
@@ -32,12 +32,12 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
-  // 🔧 关键：只用 remark-math，不用 rehype-mathjax
+  // 🔧 关键配置：使用 KaTeX 服务端渲染
   content: {
     documentDriven: false,
     markdown: {
-      remarkPlugins: ['remark-math'], // 只解析，不渲染
-      // 去掉 rehype-mathjax，让客户端处理
+      remarkPlugins: ['remark-math'],
+      rehypePlugins: ['rehype-katex'], // 服务端渲染数学公式
     },
     highlight: {
       theme: {
@@ -64,7 +64,7 @@ export default defineNuxtConfig({
     icons: ['heroicons', 'simple-icons']
   },
 
-  // 🚀 客户端加载 MathJax
+  // 🎨 只需要加载 KaTeX CSS，无需 JavaScript
   app: {
     head: {
       title: 'STEM 教育文档',
@@ -74,31 +74,13 @@ export default defineNuxtConfig({
         { name: 'description', content: 'STEM 教育文档网站 - 系统化的科学、技术、工程和数学学习资源' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
-      ],
-      script: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        // 🔗 KaTeX CSS - 唯一需要的外部资源
         {
-          innerHTML: `
-            window.MathJax = {
-              tex: {
-                inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
-                displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
-                packages: {'[+]': ['base', 'ams', 'autoload', 'require', 'newcommand']},
-                processEscapes: true
-              },
-              svg: {
-                fontCache: 'global'
-              },
-              startup: {
-                typeset: false // 手动控制渲染时机
-              }
-            };
-          `,
-          type: 'text/javascript'
-        },
-        {
-          src: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js',
-          async: true
+          rel: 'stylesheet',
+          href: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
+          integrity: 'sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV',
+          crossorigin: 'anonymous'
         }
       ]
     }

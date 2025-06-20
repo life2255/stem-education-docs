@@ -1,12 +1,14 @@
 // File: nuxt.config.ts
-// 更新配置以更好地支持中文路径
+// 🎯 这就是我说的简化配置！只用 remark-math + 客户端处理
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
-  // [最终策略]
+  extends: [
+    '@d0rich/nuxt-content-mermaid'
+  ],
+
   hooks: {
-    // 只保留策略一: 在源头确保内容ID的Unicode标准化 (NFC)，这是一个好习惯。
     'content:file:beforeParse': (file) => {
       if (file._id) {
         file._id = file._id.normalize('NFC')
@@ -14,35 +16,35 @@ export default defineNuxtConfig({
     }
   },
 
-  // 模块配置
   modules: [
     '@nuxt/content',
     '@nuxt/ui',
     '@nuxtjs/tailwindcss'
   ],
 
-  // 静态生成配置
   nitro: {
     prerender: {
       routes: ['/sitemap.xml']
     }
   },
 
-  // 解决中间件冲突
   experimental: {
     appManifest: false
   },
 
-  // 内容配置
+  // 🔧 关键：只用 remark-math，不用 rehype-mathjax
   content: {
     documentDriven: false,
     markdown: {
-      remarkPlugins: [],
-      rehypePlugins: []
+      remarkPlugins: ['remark-math'], // 只解析，不渲染
+      // 去掉 rehype-mathjax，让客户端处理
     },
     highlight: {
-      theme: 'github-dark',
-      preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown']
+      theme: {
+        default: 'github-light',
+        dark: 'github-dark'
+      },
+      preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown', 'mermaid']
     },
     navigation: {
       fields: ['title', 'description', 'difficulty', 'order', 'icon']
@@ -52,19 +54,17 @@ export default defineNuxtConfig({
     }
   },
 
-  // 路由配置
   router: {
     options: {
       strict: false
     }
   },
 
-  // UI 配置
   ui: {
     icons: ['heroicons', 'simple-icons']
   },
 
-  // 应用配置
+  // 🚀 客户端加载 MathJax
   app: {
     head: {
       title: 'STEM 教育文档',
@@ -75,22 +75,44 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+      ],
+      script: [
+        {
+          innerHTML: `
+            window.MathJax = {
+              tex: {
+                inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+                displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+                packages: {'[+]': ['base', 'ams', 'autoload', 'require', 'newcommand']},
+                processEscapes: true
+              },
+              svg: {
+                fontCache: 'global'
+              },
+              startup: {
+                typeset: false // 手动控制渲染时机
+              }
+            };
+          `,
+          type: 'text/javascript'
+        },
+        {
+          src: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js',
+          async: true
+        }
       ]
     }
   },
 
-  // Tailwind CSS 配置
   tailwindcss: {
     cssPath: '~/assets/css/tailwind.css',
     configPath: 'tailwind.config.js'
   },
 
-  // 开发服务器配置
   devServer: {
     port: 3000
   },
 
-  // Vite 配置
   vite: {
     fs: {
       strict: false

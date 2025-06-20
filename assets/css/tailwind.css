@@ -42,6 +42,49 @@
   .dark * {
     scrollbar-color: theme('colors.gray.600') theme('colors.gray.800');
   }
+
+  /* MathJax 3 样式优化 */
+  mjx-container {
+    @apply my-4;
+    line-height: 1.2 !important;
+  }
+
+  /* 行内公式样式 */
+  mjx-container[display="false"] {
+    @apply inline-block mx-1;
+    vertical-align: middle;
+  }
+
+  /* 块级公式样式 */
+  mjx-container[display="true"] {
+    @apply block text-center;
+    margin: 1.5rem auto !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* 深色模式下的数学公式 */
+  .dark mjx-container svg {
+    color: white !important;
+  }
+
+  .dark mjx-container [data-mml-node="merror"] {
+    color: #ef4444 !important;
+  }
+
+  /* 数学公式字体优化 */
+  mjx-container {
+    font-display: swap;
+    font-size: 1.1em !important;
+  }
+
+  /* 响应式数学公式 */
+  @media (max-width: 640px) {
+    mjx-container[display="true"] {
+      font-size: 0.9em !important;
+      margin: 1rem auto !important;
+    }
+  }
 }
 
 /* 组件样式 */
@@ -150,6 +193,55 @@
   .bg-surface-secondary {
     @apply bg-gray-50 dark:bg-gray-900;
   }
+
+  /* Mermaid 图表样式 */
+  .mermaid {
+    @apply flex justify-center my-6;
+    min-height: 200px;
+  }
+
+  /* Mermaid 在深色模式下的优化 */
+  .dark .mermaid svg {
+    background: transparent !important;
+  }
+
+  .dark .mermaid .node rect {
+    fill: #374151 !important;
+    stroke: #6b7280 !important;
+  }
+
+  .dark .mermaid .node .label {
+    color: #f9fafb !important;
+  }
+
+  .dark .mermaid .edgePath .path {
+    stroke: #9ca3af !important;
+  }
+
+  .dark .mermaid .arrowheadPath {
+    fill: #9ca3af !important;
+  }
+
+  /* Mermaid 流程图样式优化 */
+  .mermaid .node {
+    cursor: default;
+  }
+
+  .mermaid .flowchart-link {
+    stroke: #6366f1 !important;
+    stroke-width: 2px;
+  }
+
+  .mermaid .node rect {
+    stroke: #6366f1 !important;
+    fill: #f8fafc !important;
+    stroke-width: 2px;
+  }
+
+  .mermaid .node .label {
+    color: #1f2937 !important;
+    font-weight: 500;
+  }
 }
 
 /* 工具类 */
@@ -249,6 +341,19 @@
   .dark .shadow-strong {
     box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 16px -4px rgba(0, 0, 0, 0.4);
   }
+
+  /* 数学公式专用工具类 */
+  .math-container {
+    @apply overflow-x-auto overflow-y-hidden;
+  }
+
+  .math-inline {
+    @apply inline-block align-middle;
+  }
+
+  .math-display {
+    @apply block text-center my-4;
+  }
 }
 
 /* 响应式设计优化 */
@@ -282,6 +387,17 @@
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
   }
+
+  /* 数学公式打印优化 */
+  mjx-container {
+    break-inside: avoid;
+  }
+
+  /* Mermaid 图表打印优化 */
+  .mermaid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
 
 /* 减少动画（尊重用户偏好） */
@@ -304,19 +420,43 @@
   .card {
     @apply border-2;
   }
+
+  /* 高对比度下的数学公式 */
+  mjx-container {
+    font-weight: 600 !important;
+  }
+
+  .dark mjx-container svg {
+    filter: contrast(1.5) brightness(1.2);
+  }
 }
 
-/* 数学公式样式优化 */
-.katex {
-  font-size: 1.1em !important;
-}
-
-.katex-display {
-  margin: 1.5em 0 !important;
-  text-align: center;
-}
-
-/* 内联数学公式 */
-.katex-inline {
+/* 内联数学公式优化 */
+mjx-container[display="false"] {
   font-size: 1em !important;
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+
+/* 块级数学公式优化 */
+mjx-container[display="true"] {
+  margin: 1.5em auto !important;
+  padding: 0.5em 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+/* MathJax 错误样式 */
+mjx-merror {
+  color: #dc2626 !important;
+  background-color: #fef2f2 !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.dark mjx-merror {
+  color: #fca5a5 !important;
+  background-color: #7f1d1d !important;
 }

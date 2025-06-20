@@ -1,17 +1,14 @@
+// File: pages/[...slug].vue 
+// 保持原有结构，让插件自动处理数学公式
+
 <script setup lang="ts">
 const route = useRoute()
-// useNavigation composable is no longer used for breadcrumbs,
-// as the logic is now self-contained. Consider removing if not used elsewhere.
-// const { getSubjectById, getCategoryById } = useNavigation()
 
-// --- 关键修复：从 route.params.slug 而不是 route.path 构建查询路径 ---
-// route.params.slug 是一个包含路径各部分的数组, e.g., ['physics', 'mechanics', '运动学']
-// 这是最可靠的数据源。
+// 从 route.params.slug 构建查询路径
 const path = '/' + (Array.isArray(route.params.slug) ? route.params.slug.join('/') : route.params.slug)
 
 // 获取页面内容
 const { data, pending, error } = await useAsyncData(`content-${path}`, () => {
-  // 使用我们精确构建的 path 进行查询
   return queryContent(path).findOne()
 })
 
@@ -40,28 +37,23 @@ const getDifficultyIcon = (difficulty: string): string => {
   return icons[difficulty as keyof typeof icons] || 'i-heroicons-academic-cap-solid'
 }
 
-// --- 面包屑导航的逻辑也需要适配 ---
-// 我们直接从 `data` 中获取导航信息，不再依赖旧的 `useNavigation`
+// 面包屑导航
 const breadcrumbs = computed(() => {
-    if (!data.value || !data.value._path) {
-        return [];
+  if (!data.value || !data.value._path) {
+    return []
+  }
+  const pathSegments = data.value._path.split('/').filter(Boolean)
+  let currentPath = ''
+  return pathSegments.map((segment, index) => {
+    currentPath += `/${segment}`
+    const title = data.value._dir?.title || segment
+    return {
+      title: title,
+      path: currentPath,
+      isCurrent: index === pathSegments.length - 1
     }
-    const pathSegments = data.value._path.split('/').filter(Boolean);
-    let currentPath = '';
-    return pathSegments.map((segment, index) => {
-        currentPath += `/${segment}`;
-        // 为了获取标题，我们需要一个方法来查找导航树，或从内容本身推断
-        // 最简单的方式是直接使用 segment（文件名/目录名）作为标题，除非有更好的来源
-        const title = data.value._dir?.title || segment; // 这是一个简化
-        return {
-            title: title,
-            path: currentPath,
-            // 最后一个元素是当前页面，不设链接
-            isCurrent: index === pathSegments.length - 1
-        };
-    });
-});
-
+  })
+})
 
 // 格式化日期
 const formatDate = (date: string | Date) => {
@@ -94,7 +86,6 @@ const shareArticle = async () => {
 const copyToClipboard = async () => {
   try {
     await navigator.clipboard.writeText(window.location.href)
-    // 您可以在这里添加一个UI提示，例如使用 Nuxt UI 的 Toasts
     console.log('链接已复制到剪贴板')
   } catch (err) {
     console.error('复制失败:', err)
@@ -103,7 +94,6 @@ const copyToClipboard = async () => {
 
 // 收藏文章
 const bookmarkArticle = () => {
-  // 实现收藏逻辑
   console.log('收藏文章')
 }
 
@@ -112,7 +102,7 @@ const articleContent = ref<HTMLElement>()
 
 // 确保标题有ID
 onMounted(() => {
-  if (error.value) return; // 如果页面加载出错，则不执行
+  if (error.value) return
   nextTick(() => {
     if (articleContent.value) {
       const headings = articleContent.value.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -156,7 +146,7 @@ onMounted(() => {
       <div class="max-w-4xl mx-auto">
         <!-- 文章头部 -->
         <header class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-          <!-- 面包屑导航 (新逻辑) -->
+          <!-- 面包屑导航 -->
           <nav v-if="breadcrumbs.length > 0" class="flex items-center flex-wrap gap-x-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
             <NuxtLink to="/" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               首页
@@ -176,7 +166,6 @@ onMounted(() => {
             </template>
           </nav>
 
-
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -193,7 +182,7 @@ onMounted(() => {
           </div>
         </header>
 
-        <!-- 文章内容 -->
+        <!-- 文章内容 - 保持原有的 ContentRenderer -->
         <article 
           id="article-content"
           class="prose prose-gray max-w-none dark:prose-invert"
@@ -204,7 +193,7 @@ onMounted(() => {
 
         <!-- 文章底部 -->
         <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-8">
-           <!-- 导航 -->
+          <!-- 导航 -->
           <ContentNavigation v-slot="{ prev, next }" class="pt-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <NuxtLink v-if="prev" :to="prev._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200">
@@ -216,7 +205,7 @@ onMounted(() => {
                   {{ prev.title }}
                 </div>
               </NuxtLink>
-               <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">没有上一篇了</span>
+              <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">没有上一篇了</span>
               <NuxtLink v-if="next" :to="next._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 text-right">
                 <div class="flex items-center justify-end gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
                   下一篇
@@ -252,4 +241,14 @@ onMounted(() => {
 .prose code { @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1 py-0.5 rounded-md text-sm; }
 .prose pre { @apply bg-gray-900 border border-gray-700 rounded-lg p-4; }
 .prose pre code { @apply bg-transparent p-0 text-gray-100; }
+
+/* MathJax 样式 */
+.prose :deep(mjx-container) {
+  margin: 0.5rem 0;
+}
+
+.prose :deep(mjx-container[display="true"]) {
+  margin: 1.5rem auto !important;
+  text-align: center !important;
+}
 </style>

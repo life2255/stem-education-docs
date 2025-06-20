@@ -1,5 +1,5 @@
 <!-- File: pages/[...slug].vue -->
-<!-- 修复版本：确保 useAsyncData 中的数据是可序列化的 -->
+<!-- 保守版本：基于原始工作代码，只清理 MathJax 样式 -->
 
 <script setup lang="ts">
 const route = useRoute()
@@ -287,14 +287,4 @@ onUnmounted(() => {
 .prose code { @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1 py-0.5 rounded-md text-sm; }
 .prose pre { @apply bg-gray-900 border border-gray-700 rounded-lg p-4; }
 .prose pre code { @apply bg-transparent p-0 text-gray-100; }
-
-/* MathJax 样式 */
-.prose :deep(mjx-container) {
-  margin: 0.5rem 0;
-}
-
-.prose :deep(mjx-container[display="true"]) {
-  margin: 1.5rem auto !important;
-  text-align: center !important;
-}
 </style>

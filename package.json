@@ -25,7 +25,6 @@
     "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@nuxtjs/tailwindcss": "^6.12.1",
     "@tailwindcss/typography": "^0.5.14",
-    "@types/mathjax": "^0.0.37",
     "eslint": "^8.57.0"
   },
   "engines": {

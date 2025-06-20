@@ -1,7 +1,8 @@
 /* File: assets/css/tailwind.css */
 
-/* 导入侧边栏专用样式 - 必须在@tailwind之前 */
+/* 导入专用样式 - 必须在@tailwind之前 */
 @import './sidebar.css';
+@import './katex.css'; /* 新增：导入 KaTeX 优化样式 */
 
 @tailwind base;
 @tailwind components;
@@ -42,8 +43,6 @@
   .dark * {
     scrollbar-color: theme('colors.gray.600') theme('colors.gray.800');
   }
-
- 
 }
 
 /* 组件样式 */
@@ -201,6 +200,68 @@
     color: #1f2937 !important;
     font-weight: 500;
   }
+
+  /* === 增强的数学公式容器样式 === */
+  
+  /* 数学内容区域 */
+  .math-content {
+    @apply relative;
+  }
+
+  .math-content .katex-display {
+    /* 使用新的 KaTeX 样式，这里只做基础定位 */
+    @apply relative;
+  }
+
+  /* 数学公式复制功能 */
+  .math-copy-wrapper {
+    @apply relative group;
+  }
+
+  .math-copy-button {
+    @apply absolute top-2 right-2 opacity-0 group-hover:opacity-100 
+           bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600
+           rounded-md p-1.5 text-xs text-gray-500 dark:text-gray-400
+           hover:text-gray-700 dark:hover:text-gray-200 
+           hover:border-gray-300 dark:hover:border-gray-500
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* 数学公式编号 */
+  .math-numbered {
+    @apply flex items-center justify-between;
+  }
+
+  .math-equation-number {
+    @apply text-sm text-gray-500 dark:text-gray-400 font-mono
+           bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded;
+  }
+
+  /* 多行数学公式对齐 */
+  .math-align {
+    @apply text-left;
+  }
+
+  .math-align .katex-display {
+    @apply text-left;
+  }
+
+  /* 数学公式工具提示 */
+  .math-tooltip {
+    @apply relative cursor-help;
+  }
+
+  .math-tooltip::after {
+    content: attr(data-tooltip);
+    @apply absolute -top-8 left-1/2 transform -translate-x-1/2
+           bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900
+           text-xs px-2 py-1 rounded opacity-0 pointer-events-none
+           transition-opacity duration-200 whitespace-nowrap z-10;
+  }
+
+  .math-tooltip:hover::after {
+    @apply opacity-100;
+  }
 }
 
 /* 工具类 */
@@ -301,17 +362,112 @@
     box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 16px -4px rgba(0, 0, 0, 0.4);
   }
 
-  /* 数学公式专用工具类 */
+  /* === 数学公式专用工具类（增强版） === */
+  
+  /* 基础容器 */
   .math-container {
-    @apply overflow-x-auto overflow-y-hidden;
+    @apply overflow-x-auto overflow-y-hidden relative;
   }
 
+  .math-container::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .math-container::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800 rounded;
+  }
+
+  .math-container::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded;
+  }
+
+  /* 行内数学样式工具类 */
   .math-inline {
     @apply inline-block align-middle;
   }
 
+  /* 块级数学样式工具类 */
   .math-display {
-    @apply block text-center my-4;
+    @apply block text-center my-4 relative;
+  }
+
+  /* 数学公式尺寸变体 */
+  .math-small {
+    font-size: 0.875em;
+  }
+
+  .math-large {
+    font-size: 1.125em;
+  }
+
+  .math-xl {
+    font-size: 1.25em;
+  }
+
+  /* 数学公式主题变体 */
+  .math-primary {
+    --katex-bg: rgba(239, 246, 255, 0.8);
+    --katex-border: rgba(147, 197, 253, 0.3);
+  }
+
+  .math-success {
+    --katex-bg: rgba(240, 253, 244, 0.8);
+    --katex-border: rgba(134, 239, 172, 0.3);
+  }
+
+  .math-warning {
+    --katex-bg: rgba(255, 251, 235, 0.8);
+    --katex-border: rgba(251, 191, 36, 0.3);
+  }
+
+  /* 数学公式对齐工具类 */
+  .math-left {
+    text-align: left;
+  }
+
+  .math-center {
+    text-align: center;
+  }
+
+  .math-right {
+    text-align: right;
+  }
+
+  /* 数学公式间距工具类 */
+  .math-tight {
+    margin: 0.5rem 0;
+  }
+
+  .math-loose {
+    margin: 2rem 0;
+  }
+
+  /* 数学公式突出显示 */
+  .math-highlight {
+    @apply relative;
+  }
+
+  .math-highlight::before {
+    content: "";
+    @apply absolute inset-0 bg-yellow-200 dark:bg-yellow-800/30 
+           rounded-lg -z-10 opacity-50;
+  }
+
+  /* 数学公式焦点状态 */
+  .math-focus {
+    @apply ring-2 ring-primary-500 ring-opacity-50 rounded-lg;
+  }
+
+  /* 数学公式加载状态 */
+  .math-loading {
+    @apply animate-pulse bg-gray-200 dark:bg-gray-700 
+           rounded-lg min-h-8 w-full;
+  }
+
+  /* 数学公式错误状态 */
+  .math-error {
+    @apply bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
+           text-red-700 dark:text-red-300 rounded-lg p-2;
   }
 }
 
@@ -328,6 +484,19 @@
   @screen lg {
     .desktop-only {
       @apply block;
+    }
+  }
+
+  /* 数学公式响应式优化 */
+  @screen sm {
+    .math-responsive {
+      font-size: 1em;
+    }
+  }
+
+  @screen lg {
+    .math-responsive {
+      font-size: 1.1em;
     }
   }
 }
@@ -347,7 +516,11 @@
     -webkit-print-color-adjust: exact !important;
   }
 
-
+  /* 数学公式打印优化 */
+  .katex-display {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 
   /* Mermaid 图表打印优化 */
   .mermaid {
@@ -365,6 +538,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.3ms !important;
   }
+
+  .math-container,
+  .katex-display,
+  .katex {
+    transition: none !important;
+  }
 }
 
 /* 高对比度优化 */
@@ -377,9 +556,12 @@
     @apply border-2;
   }
 
+  /* 数学公式高对比度 */
+  .katex-display {
+    border-width: 2px !important;
+  }
 
+  .katex {
+    border-width: 1.5px !important;
+  }
 }
-
-
-
-

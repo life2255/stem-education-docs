@@ -1,0 +1,410 @@
+/* File: assets/css/katex.css */
+
+/* ========================================
+   KaTeX 数学公式专业优化样式（修复版）
+   ======================================== */
+
+/* 基础 KaTeX 容器优化 - 移除蓝框，采用极简设计 */
+.katex-display {
+  /* 块级公式容器 - 极简风格 */
+  @apply my-6 overflow-x-auto overflow-y-hidden;
+  
+  /* 移除原来的蓝色背景和边框，采用极简设计 */
+  padding: 1rem 0;
+  text-align: center;
+  
+  /* 只在需要时显示微妙的阴影 */
+  transition: all 0.2s ease-in-out;
+}
+
+.katex-display:hover {
+  /* 悬停时微妙的效果，不干扰内容 */
+  transform: translateY(-1px);
+}
+
+/* 深色模式下保持一致 */
+.dark .katex-display {
+  /* 深色模式下无需特殊处理 */
+}
+
+.dark .katex-display:hover {
+  /* 深色模式悬停效果 */
+  transform: translateY(-1px);
+}
+
+/* 行内公式优化 - 同样采用极简设计 */
+.katex {
+  /* 基础样式 */
+  @apply font-normal;
+  
+  /* 改善行高和对齐 */
+  line-height: 1;
+  vertical-align: baseline;
+  
+  /* 移除背景框，保持原生外观 */
+  margin: 0 0.125rem;
+  
+  /* 微妙过渡效果 */
+  transition: all 0.15s ease-in-out;
+}
+
+.katex:hover {
+  /* 行内公式悬停时轻微高亮，不干扰阅读 */
+  color: rgb(59, 130, 246); /* 蓝色 */
+}
+
+/* 深色模式行内公式 */
+.dark .katex {
+  color: rgb(243, 244, 246); /* 浅色文字 */
+}
+
+.dark .katex:hover {
+  color: rgb(129, 140, 248); /* 深色模式下的蓝色 */
+}
+
+/* KaTeX 字体优化 */
+.katex .katex-mathml {
+  /* 隐藏 MathML，只显示 HTML 渲染 */
+  display: none;
+}
+
+.katex .katex-html {
+  /* 确保 HTML 渲染可见 */
+  display: inline-block;
+}
+
+/* 数学符号和操作符优化 */
+.katex .mord,
+.katex .mop,
+.katex .mbin,
+.katex .mrel {
+  /* 改善字符间距 */
+  letter-spacing: 0.01em;
+}
+
+/* 分数线优化 */
+.katex .frac-line {
+  /* 更清晰的分数线 */
+  border-bottom-width: 0.06em;
+  opacity: 0.9;
+}
+
+.dark .katex .frac-line {
+  opacity: 0.8;
+}
+
+/* 根号优化 */
+.katex .sqrt > .root {
+  /* 根号线条优化 */
+  border-top-width: 0.06em;
+}
+
+/* 大型操作符优化 */
+.katex .op-symbol {
+  /* 积分、求和等符号 */
+  font-weight: 400;
+}
+
+/* 上下标优化 */
+.katex .supsub {
+  /* 改善上下标位置 */
+  vertical-align: baseline;
+}
+
+/* 矩阵和数组优化 - 重点修复 */
+.katex .arraycolsep {
+  /* 矩阵列间距 */
+  width: 0.5em;
+}
+
+.katex .array {
+  /* 矩阵边框 */
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0.5em 0; /* 为大型矩阵增加上下边距 */
+}
+
+.katex .hline {
+  /* 矩阵水平线 */
+  border-bottom: 0.06em solid;
+  opacity: 0.8;
+}
+
+/* 大型矩阵特殊处理 */
+.katex-display .array {
+  /* 确保大型矩阵有足够空间 */
+  margin: 1em auto;
+  max-width: 100%;
+}
+
+/* 矩阵括号优化 */
+.katex .delimsizing,
+.katex .delim-size1,
+.katex .delim-size2,
+.katex .delim-size3,
+.katex .delim-size4 {
+  /* 括号粗细优化 */
+  font-weight: 400;
+}
+
+/* 特殊环境：对齐和矩阵 */
+.katex .mtable {
+  /* 表格/矩阵基础样式 */
+  margin: 0.5em 0;
+  line-height: 1.2;
+}
+
+.katex .arraycolumn {
+  /* 数组列样式 */
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 长公式滚动优化 */
+.katex-display {
+  /* 确保长公式可以滚动 */
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+
+.katex-display::-webkit-scrollbar {
+  height: 4px;
+}
+
+.katex-display::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 2px;
+}
+
+.katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* 深色模式滚动条 */
+.dark .katex-display {
+  scrollbar-color: rgba(107, 114, 128, 0.3) transparent;
+}
+
+.dark .katex-display::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.3);
+}
+
+.dark .katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.5);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .katex-display {
+    /* 移动端减少内边距 */
+    padding: 0.75rem 0;
+    font-size: 0.95em;
+  }
+  
+  .katex {
+    /* 移动端行内公式 */
+    font-size: 0.9em;
+  }
+  
+  /* 移动端矩阵优化 */
+  .katex .array {
+    font-size: 0.85em;
+    margin: 0.25em 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .katex-display {
+    /* 小屏幕进一步优化 */
+    padding: 0.5rem 0;
+    font-size: 0.9em;
+  }
+  
+  /* 超小屏幕矩阵优化 */
+  .katex .array {
+    font-size: 0.8em;
+  }
+  
+  /* 长公式滚动提示 */
+  .katex-display::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1rem;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.8));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .katex-display.overflow::after {
+    opacity: 1;
+  }
+  
+  .dark .katex-display::after {
+    background: linear-gradient(to right, transparent, rgba(17, 24, 39, 0.8));
+  }
+}
+
+/* 打印优化 */
+@media print {
+  .katex-display {
+    /* 打印时移除所有装饰 */
+    padding: 0.5rem 0;
+    transform: none !important;
+    
+    /* 确保公式不被截断 */
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: visible;
+  }
+  
+  .katex {
+    /* 打印时行内公式简化 */
+    margin: 0;
+    transform: none !important;
+  }
+  
+  /* 确保黑色文字 */
+  .katex * {
+    color: black !important;
+  }
+}
+
+/* 高对比度模式优化 */
+@media (prefers-contrast: high) {
+  .katex-display {
+    /* 高对比度下增强边界 */
+    outline: 1px solid currentColor;
+  }
+  
+  .katex:hover {
+    /* 高对比度悬停效果 */
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+  
+  .dark .katex:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  .katex-display,
+  .katex {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* 数学环境特定优化 */
+
+/* 对齐环境 */
+.katex .align-environment {
+  margin: 1em 0;
+}
+
+/* 案例环境 */
+.katex .cases {
+  border-left: 0.12em solid;
+  padding-left: 0.5em;
+}
+
+/* 公式编号支持 */
+.katex-display .katex-numberer {
+  float: right;
+  margin-top: 0.5em;
+  font-size: 0.8em;
+  color: rgba(107, 114, 128, 0.8);
+}
+
+.dark .katex-display .katex-numberer {
+  color: rgba(156, 163, 175, 0.8);
+}
+
+/* 工具提示支持 */
+.katex[title] {
+  cursor: help;
+  border-bottom: 1px dotted rgba(107, 114, 128, 0.5);
+}
+
+.dark .katex[title] {
+  border-bottom-color: rgba(156, 163, 175, 0.5);
+}
+
+/* 复制按钮支持 - 极简设计 */
+.katex-display {
+  position: relative;
+}
+
+.katex-display .copy-button {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 4px;
+  padding: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: rgba(107, 114, 128, 0.8);
+}
+
+.katex-display:hover .copy-button {
+  opacity: 1;
+}
+
+.dark .katex-display .copy-button {
+  background: rgba(17, 24, 39, 0.9);
+  border-color: rgba(75, 85, 99, 0.5);
+  color: rgba(156, 163, 175, 0.8);
+}
+
+/* 可访问性增强 */
+.katex[role="math"] {
+  /* 确保屏幕阅读器识别 */
+  speak: literal-punctuation;
+}
+
+/* 错误状态样式 */
+.katex-error {
+  color: #cc0000;
+  background: rgba(204, 0, 0, 0.1);
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+}
+
+/* 加载状态样式 */
+.katex-loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 0.25rem;
+  min-height: 1.5rem;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.dark .katex-loading {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}

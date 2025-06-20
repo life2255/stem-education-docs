@@ -1,51 +1,55 @@
 <!-- File: pages/[...slug].vue -->
-<!-- 保守版本：基于原始工作代码，只清理 MathJax 样式 -->
+<!-- 修复版本：解决序列化和组件解析问题 -->
 
 <script setup lang="ts">
 const route = useRoute()
 
+// 导入 KaTeX 增强功能（如果需要）
+// const { initialize: initKaTeX } = useKaTeXEnhancements()
+
 // 从 route.params.slug 构建查询路径
 const path = '/' + (Array.isArray(route.params.slug) ? route.params.slug.join('/') : route.params.slug)
 
-// 获取页面内容 - 使用 transform 确保数据是可序列化的
+// 🔧 关键修复：确保返回完全可序列化的数据
 const { data, pending, error } = await useAsyncData(`content-${path}`, async () => {
   try {
     const content = await queryContent(path).findOne()
     
-    // 如果没有找到内容，返回 null
     if (!content) {
       return null
     }
     
-    // 创建一个纯对象，只包含需要的属性
-    const serializedContent = {
-      title: String(content.title || ''),
-      description: String(content.description || ''),
-      _path: String(content._path || ''),
+    // 🎯 创建完全可序列化的纯对象
+    const safeContent = {
+      title: content.title ? String(content.title) : '',
+      description: content.description ? String(content.description) : '',
+      _path: content._path ? String(content._path) : '',
+      // 🛡️ 只传递必要的 body 数据，避免复杂对象
       body: content.body || null,
-      toc: content.toc || null,
-      // 只包含基本的元数据
+      // 移除 toc，由客户端生成
       difficulty: content.difficulty ? String(content.difficulty) : undefined,
       readingTime: content.readingTime ? String(content.readingTime) : undefined,
-      tags: Array.isArray(content.tags) ? content.tags.map(tag => String(tag)) : undefined,
-      createdAt: content.createdAt ? String(content.createdAt) : undefined,
-      updatedAt: content.updatedAt ? String(content.updatedAt) : undefined,
-      // 确保_dir是纯对象
-      _dir: content._dir ? {
-        title: String(content._dir.title || ''),
-        description: String(content._dir.description || '')
-      } : undefined
+      tags: Array.isArray(content.tags) ? content.tags.map(tag => String(tag)) : [],
+      // 📅 安全的日期处理
+      createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : undefined,
+      updatedAt: content.updatedAt ? new Date(content.updatedAt).toISOString() : undefined,
     }
     
-    return serializedContent
+    return safeContent
   } catch (err) {
     console.error('加载内容失败:', err)
     return null
   }
 }, {
-  // 添加序列化选项
+  // 🔧 确保服务端渲染正确
   server: true,
-  default: () => null
+  default: () => null,
+  // 🛡️ 添加序列化转换
+  transform: (data) => {
+    if (!data) return data
+    // 确保返回纯对象
+    return JSON.parse(JSON.stringify(data))
+  }
 })
 
 // 设置页面元数据
@@ -63,107 +67,71 @@ const difficultyLabels: Record<string, string> = {
   advanced: '高级'
 }
 
-// 获取难度对应的图标
-const getDifficultyIcon = (difficulty: string): string => {
-  const icons = {
-    beginner: 'i-heroicons-academic-cap-solid',
-    intermediate: 'i-heroicons-fire-solid',
-    advanced: 'i-heroicons-bolt-solid'
-  }
-  return icons[difficulty as keyof typeof icons] || 'i-heroicons-academic-cap-solid'
-}
-
-// 面包屑导航 - 简化实现避免复杂对象
+// 面包屑导航 - 简化版本
 const breadcrumbs = computed(() => {
-  if (!data.value || !data.value._path) {
-    return []
-  }
+  if (!data.value?._path) return []
   
-  const pathSegments = data.value._path.split('/').filter(Boolean)
-  let currentPath = ''
-  
-  return pathSegments.map((segment, index) => {
-    currentPath += `/${segment}`
-    // 创建纯对象
-    return {
-      title: segment.replace(/[-_]/g, ' ').replace(/^\d+\./, '').trim(),
-      path: currentPath,
-      isCurrent: index === pathSegments.length - 1
-    }
-  })
+  const segments = data.value._path.split('/').filter(Boolean)
+  return segments.map((segment, index) => ({
+    title: segment.replace(/[-_]/g, ' ').replace(/^\d+\./, '').trim(),
+    path: '/' + segments.slice(0, index + 1).join('/'),
+    isCurrent: index === segments.length - 1
+  }))
 })
 
 // 格式化日期
-const formatDate = (date: string | Date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+const formatDate = (dateString?: string) => {
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch {
+    return ''
+  }
 }
 
-// 分享文章
+// 简化的分享和收藏功能
 const shareArticle = async () => {
   if (!data.value) return
   
+  const url = window.location.href
+  const title = data.value.title
+  const text = data.value.description
+  
   if (navigator.share) {
     try {
-      await navigator.share({
-        title: data.value.title,
-        text: data.value.description,
-        url: window.location.href
-      })
-    } catch (err) {
-      await copyToClipboard()
+      await navigator.share({ title, text, url })
+    } catch {
+      await copyToClipboard(url)
     }
   } else {
-    await copyToClipboard()
+    await copyToClipboard(url)
   }
 }
 
-// 复制链接到剪贴板
-const copyToClipboard = async () => {
+const copyToClipboard = async (text: string) => {
   try {
-    await navigator.clipboard.writeText(window.location.href)
-    console.log('链接已复制到剪贴板')
-  } catch (err) {
-    console.error('复制失败:', err)
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // 降级方案
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
   }
 }
 
-// 收藏文章
 const bookmarkArticle = () => {
-  console.log('收藏文章')
+  // 简单的书签功能
+  console.log('收藏文章:', data.value?.title)
 }
-
-// 文章内容引用
-const articleContent = ref<HTMLElement>()
-
-// 确保标题有ID
-onMounted(() => {
-  if (error.value || !data.value) return
-  
-  nextTick(() => {
-    if (articleContent.value) {
-      const headings = articleContent.value.querySelectorAll('h1, h2, h3, h4, h5, h6')
-      headings.forEach((heading, index) => {
-        if (!heading.id) {
-          const text = heading.textContent || ''
-          const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').trim()
-          heading.id = id || `heading-${index}`
-        }
-      })
-    }
-  })
-})
-
-// 清理函数
-onUnmounted(() => {
-  if (articleContent.value) {
-    articleContent.value = undefined
-  }
-})
 </script>
 
 <template>
@@ -223,27 +191,64 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="flex items-center space-x-2 ml-6">
-            <UButton icon="i-heroicons-share-solid" color="gray" variant="outline" size="sm" aria-label="分享" @click="shareArticle" />
-            <UButton icon="i-heroicons-bookmark-solid" color="gray" variant="outline" size="sm" aria-label="收藏" @click="bookmarkArticle" />
+            <UButton 
+              icon="i-heroicons-share-solid" 
+              color="gray" 
+              variant="outline" 
+              size="sm" 
+              aria-label="分享" 
+              @click="shareArticle" 
+            />
+            <UButton 
+              icon="i-heroicons-bookmark-solid" 
+              color="gray" 
+              variant="outline" 
+              size="sm" 
+              aria-label="收藏" 
+              @click="bookmarkArticle" 
+            />
+          </div>
+        </div>
+
+        <!-- 文章元信息 -->
+        <div v-if="data.difficulty || data.readingTime || data.tags?.length" class="flex items-center gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400">
+          <span v-if="data.difficulty" class="flex items-center gap-1">
+            <UIcon name="i-heroicons-academic-cap" class="w-4 h-4" />
+            {{ difficultyLabels[data.difficulty] }}
+          </span>
+          <span v-if="data.readingTime" class="flex items-center gap-1">
+            <UIcon name="i-heroicons-clock" class="w-4 h-4" />
+            {{ data.readingTime }}
+          </span>
+          <div v-if="data.tags?.length" class="flex items-center gap-2">
+            <UIcon name="i-heroicons-tag" class="w-4 h-4" />
+            <div class="flex gap-1">
+              <span v-for="tag in data.tags" :key="tag" class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                {{ tag }}
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
-      <!-- 文章内容 -->
+      <!-- 🎯 文章内容 - 确保 KaTeX 正确渲染 -->
       <article 
         id="article-content"
         class="prose prose-gray max-w-none dark:prose-invert"
-        ref="articleContent"
       >
-        <!-- 使用 ContentRenderer 渲染内容 -->
+        <!-- 🛡️ 使用 ContentRenderer 渲染内容 -->
         <ContentRenderer v-if="data" :value="data" />
       </article>
 
       <!-- 文章底部导航 -->
-      <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700 space-y-8">
-        <ContentNavigation v-slot="{ prev, next }" class="pt-6">
+      <footer class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700">
+        <ContentNavigation v-slot="{ prev, next }">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <NuxtLink v-if="prev" :to="prev._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200">
+            <NuxtLink 
+              v-if="prev" 
+              :to="prev._path" 
+              class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200"
+            >
               <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
                 <UIcon name="i-heroicons-arrow-left-solid" class="w-4 h-4" />
                 上一篇
@@ -252,8 +257,15 @@ onUnmounted(() => {
                 {{ prev.title }}
               </div>
             </NuxtLink>
-            <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">没有上一篇了</span>
-            <NuxtLink v-if="next" :to="next._path" class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 text-right">
+            <div v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">
+              没有上一篇了
+            </div>
+            
+            <NuxtLink 
+              v-if="next" 
+              :to="next._path" 
+              class="group block p-6 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 text-right"
+            >
               <div class="flex items-center justify-end gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
                 下一篇
                 <UIcon name="i-heroicons-arrow-right-solid" class="w-4 h-4" />
@@ -262,7 +274,9 @@ onUnmounted(() => {
                 {{ next.title }}
               </div>
             </NuxtLink>
-            <span v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">已是最后一篇</span>
+            <div v-else class="block p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center text-gray-400">
+              已是最后一篇
+            </div>
           </div>
         </ContentNavigation>
       </footer>
@@ -271,20 +285,57 @@ onUnmounted(() => {
 </template>
 
 <style>
-/* Basic prose styling */
+/* 基础 prose 样式 */
 .prose {
-    line-height: 1.7;
+  line-height: 1.7;
 }
+
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-    @apply font-semibold scroll-mt-24;
+  @apply font-semibold scroll-mt-24;
 }
+
 .prose h1 { @apply text-3xl; }
 .prose h2 { @apply text-2xl; }
 .prose h3 { @apply text-xl; }
 .prose h4 { @apply text-lg; }
-.prose p { @apply text-gray-700 dark:text-gray-300; }
-.prose a { @apply text-primary-600 dark:text-primary-400 no-underline hover:underline; }
-.prose code { @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1 py-0.5 rounded-md text-sm; }
-.prose pre { @apply bg-gray-900 border border-gray-700 rounded-lg p-4; }
-.prose pre code { @apply bg-transparent p-0 text-gray-100; }
+
+.prose p { 
+  @apply text-gray-700 dark:text-gray-300; 
+}
+
+.prose a { 
+  @apply text-primary-600 dark:text-primary-400 no-underline hover:underline; 
+}
+
+.prose code { 
+  @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1 py-0.5 rounded-md text-sm; 
+}
+
+.prose pre { 
+  @apply bg-gray-900 border border-gray-700 rounded-lg p-4; 
+}
+
+.prose pre code { 
+  @apply bg-transparent p-0 text-gray-100; 
+}
+
+/* 🎯 KaTeX 样式确保不会有组件冲突 */
+.prose .katex-display {
+  @apply my-6 text-center overflow-x-auto;
+}
+
+.prose .katex {
+  @apply font-normal;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .prose .katex-display {
+    font-size: 0.9em;
+  }
+  
+  .prose .katex {
+    font-size: 0.85em;
+  }
+}
 </style>

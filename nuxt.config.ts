@@ -1,5 +1,5 @@
 // File: nuxt.config.ts
-// 最终修复版本：彻底解决 KaTeX MathML 组件错误
+// 安全优化版本：只修改性能关键点，避免破坏性改动
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
@@ -17,6 +17,7 @@ export default defineNuxtConfig({
     }
   },
 
+  // ✅ 保持原有模块配置，不做改动
   modules: [
     '@nuxt/content',
     '@nuxt/ui',
@@ -33,7 +34,7 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
-  // 🔧 关键修复：KaTeX 配置，完全避免 MathML
+  // 🔧 关键优化：KaTeX 配置保持不变
   content: {
     documentDriven: false,
     markdown: {
@@ -42,18 +43,11 @@ export default defineNuxtConfig({
         [
           'rehype-katex',
           {
-            // 🎯 关键设置：只输出 HTML，完全禁用 MathML
             output: 'html',
-            
-            // 其他安全设置
             throwOnError: false,
             strict: false,
             trust: false,
-            
-            // 确保不生成任何 MathML 相关内容
             displayMode: false,
-            
-            // 修复智能引号问题
             macros: {
               "'": "'"
             }
@@ -66,21 +60,26 @@ export default defineNuxtConfig({
         default: 'github-light',
         dark: 'github-dark'
       },
-      preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown', 'mermaid']
+      // 🚀 关键优化1：减少语法高亮预加载 (从8种减少到3种)
+      preload: ['javascript', 'typescript', 'vue']
+      // 原来：['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown', 'mermaid']
     },
     navigation: {
       fields: ['title', 'description', 'difficulty', 'order', 'icon']
     },
+    // 🚀 关键优化2：启用实验性缓存功能
     experimental: {
-      clientDB: true
+      clientDB: true,
+      // 新增：启用内容缓存
+      cacheContents: true,
+      stripQueryParameters: true
     }
   },
 
-  // 🛡️ Vue 编译器配置：防止 MathML 标签被解析为组件
+  // ✅ Vue 配置保持不变
   vue: {
     compilerOptions: {
       isCustomElement: (tag) => {
-        // 将所有 MathML 标签标记为自定义元素，不解析为 Vue 组件
         const mathmlTags = [
           'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac',
           'msqrt', 'mroot', 'mtext', 'annotation', 'semantics',
@@ -105,7 +104,7 @@ export default defineNuxtConfig({
     icons: ['heroicons', 'simple-icons']
   },
 
-  // 🎨 KaTeX CSS 加载
+  // ✅ 保持原有 app 配置
   app: {
     head: {
       title: 'STEM 教育文档',
@@ -126,7 +125,6 @@ export default defineNuxtConfig({
     }
   },
 
-  // 🔧 修复序列化问题
   ssr: {
     noExternal: ['rehype-katex', 'katex']
   },
@@ -144,7 +142,7 @@ export default defineNuxtConfig({
     fs: {
       strict: false
     },
-    // 🛡️ 确保 KaTeX 正确处理
+    // 🚀 关键优化3：依赖预构建
     optimizeDeps: {
       include: ['katex']
     }

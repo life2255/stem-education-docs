@@ -1,13 +1,14 @@
 // File: nuxt.config.ts
-// 安全优化版本：只修改性能关键点，避免破坏性改动
+// 修正版本：移除有问题的模块，使用自定义 Mermaid 组件
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
-  extends: [
-    '@d0rich/nuxt-content-mermaid'
-  ],
+  // ❌ 移除有问题的第三方模块
+  // extends: [
+  //   '@d0rich/nuxt-content-mermaid'  // 移除这行
+  // ],
 
   hooks: {
     'content:file:beforeParse': (file) => {
@@ -17,7 +18,6 @@ export default defineNuxtConfig({
     }
   },
 
-  // ✅ 保持原有模块配置，不做改动
   modules: [
     '@nuxt/content',
     '@nuxt/ui',
@@ -31,10 +31,13 @@ export default defineNuxtConfig({
   },
 
   experimental: {
-    appManifest: false
+    appManifest: false,
+    // 🔧 添加这些优化，减少序列化问题
+    payloadExtraction: false,
+    clientNodeCompat: false
   },
 
-  // 🔧 关键优化：KaTeX 配置保持不变
+  // 🔧 KaTeX 配置保持不变
   content: {
     documentDriven: false,
     markdown: {
@@ -60,23 +63,17 @@ export default defineNuxtConfig({
         default: 'github-light',
         dark: 'github-dark'
       },
-      // 🚀 关键优化1：减少语法高亮预加载 (从8种减少到3种)
-      preload: ['javascript', 'typescript', 'vue']
-      // 原来：['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown', 'mermaid']
+      preload: ['javascript', 'typescript', 'python', 'java', 'cpp', 'vue', 'markdown', 'mermaid']
     },
     navigation: {
       fields: ['title', 'description', 'difficulty', 'order', 'icon']
     },
-    // 🚀 关键优化2：启用实验性缓存功能
     experimental: {
-      clientDB: true,
-      // 新增：启用内容缓存
-      cacheContents: true,
-      stripQueryParameters: true
+      clientDB: true
     }
   },
 
-  // ✅ Vue 配置保持不变
+  // 🛡️ Vue 编译器配置保持不变
   vue: {
     compilerOptions: {
       isCustomElement: (tag) => {
@@ -104,7 +101,6 @@ export default defineNuxtConfig({
     icons: ['heroicons', 'simple-icons']
   },
 
-  // ✅ 保持原有 app 配置
   app: {
     head: {
       title: 'STEM 教育文档',
@@ -125,8 +121,9 @@ export default defineNuxtConfig({
     }
   },
 
+  // 🔧 确保 Mermaid 在 SSR 中正确处理
   ssr: {
-    noExternal: ['rehype-katex', 'katex']
+    noExternal: ['rehype-katex', 'katex', 'mermaid']
   },
 
   tailwindcss: {
@@ -142,9 +139,12 @@ export default defineNuxtConfig({
     fs: {
       strict: false
     },
-    // 🚀 关键优化3：依赖预构建
     optimizeDeps: {
-      include: ['katex']
+      include: ['katex', 'mermaid']
+    },
+    // 🔧 确保 Mermaid 正确处理
+    define: {
+      global: 'globalThis'
     }
   }
 })

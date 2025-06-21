@@ -1,16 +1,16 @@
 <!-- File: pages/[...slug].vue -->
-<!-- 修复版本：解决序列化和组件解析问题 -->
+<!-- 重构版本：正确集成客户端增强功能 -->
 
 <script setup lang="ts">
 const route = useRoute()
 
-// 导入 KaTeX 增强功能（如果需要）
-// const { initialize: initKaTeX } = useKaTeXEnhancements()
+// ❌ 原代码问题：直接导入客户端专用的 composable
+// ✅ 新方案：在 onMounted 中动态初始化
 
 // 从 route.params.slug 构建查询路径
 const path = '/' + (Array.isArray(route.params.slug) ? route.params.slug.join('/') : route.params.slug)
 
-// 🔧 关键修复：确保返回完全可序列化的数据
+// 🔧 数据获取 - 保持服务端安全
 const { data, pending, error } = await useAsyncData(`content-${path}`, async () => {
   try {
     const content = await queryContent(path).findOne()
@@ -19,18 +19,15 @@ const { data, pending, error } = await useAsyncData(`content-${path}`, async () 
       return null
     }
     
-    // 🎯 创建完全可序列化的纯对象
+    // 创建完全可序列化的纯对象
     const safeContent = {
       title: content.title ? String(content.title) : '',
       description: content.description ? String(content.description) : '',
       _path: content._path ? String(content._path) : '',
-      // 🛡️ 只传递必要的 body 数据，避免复杂对象
       body: content.body || null,
-      // 移除 toc，由客户端生成
       difficulty: content.difficulty ? String(content.difficulty) : undefined,
       readingTime: content.readingTime ? String(content.readingTime) : undefined,
       tags: Array.isArray(content.tags) ? content.tags.map(tag => String(tag)) : [],
-      // 📅 安全的日期处理
       createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : undefined,
       updatedAt: content.updatedAt ? new Date(content.updatedAt).toISOString() : undefined,
     }
@@ -41,13 +38,10 @@ const { data, pending, error } = await useAsyncData(`content-${path}`, async () 
     return null
   }
 }, {
-  // 🔧 确保服务端渲染正确
   server: true,
   default: () => null,
-  // 🛡️ 添加序列化转换
   transform: (data) => {
     if (!data) return data
-    // 确保返回纯对象
     return JSON.parse(JSON.stringify(data))
   }
 })
@@ -93,9 +87,55 @@ const formatDate = (dateString?: string) => {
   }
 }
 
+// ✅ 客户端增强功能 - 在 onMounted 中动态加载
+onMounted(async () => {
+  // 确保在客户端环境
+  if (!process.client) return
+
+  try {
+    // 🎯 动态导入客户端专用的 composable
+    const { useKaTeXEnhancements } = await import('~/composables/useKaTeXEnhancements')
+    
+    // 延迟初始化，确保内容已完全渲染
+    setTimeout(async () => {
+      const { initializeEnhancements } = useKaTeXEnhancements()
+      const enhancements = initializeEnhancements()
+      
+      if (enhancements) {
+        // 运行所有增强功能
+        const cleanup = enhancements.runEnhancements()
+        
+        // 监听内容变化，重新应用增强
+        const observer = new MutationObserver(() => {
+          if (enhancements) {
+            enhancements.detectOverflow()
+            enhancements.addCopyButtons()
+          }
+        })
+        
+        const articleContent = document.getElementById('article-content')
+        if (articleContent) {
+          observer.observe(articleContent, {
+            childList: true,
+            subtree: true
+          })
+        }
+        
+        // 组件卸载时清理
+        onUnmounted(() => {
+          if (cleanup) cleanup()
+          observer.disconnect()
+        })
+      }
+    }, 300) // 延迟 300ms 确保 KaTeX 渲染完成
+  } catch (error) {
+    console.error('加载 KaTeX 增强功能失败:', error)
+  }
+})
+
 // 简化的分享和收藏功能
 const shareArticle = async () => {
-  if (!data.value) return
+  if (!process.client || !data.value) return
   
   const url = window.location.href
   const title = data.value.title
@@ -113,10 +153,11 @@ const shareArticle = async () => {
 }
 
 const copyToClipboard = async (text: string) => {
+  if (!process.client) return
+  
   try {
     await navigator.clipboard.writeText(text)
   } catch {
-    // 降级方案
     const textArea = document.createElement('textarea')
     textArea.value = text
     textArea.style.position = 'fixed'
@@ -129,7 +170,6 @@ const copyToClipboard = async (text: string) => {
 }
 
 const bookmarkArticle = () => {
-  // 简单的书签功能
   console.log('收藏文章:', data.value?.title)
 }
 </script>
@@ -190,24 +230,28 @@ const bookmarkArticle = () => {
               {{ data.description }}
             </div>
           </div>
-          <div class="flex items-center space-x-2 ml-6">
-            <UButton 
-              icon="i-heroicons-share-solid" 
-              color="gray" 
-              variant="outline" 
-              size="sm" 
-              aria-label="分享" 
-              @click="shareArticle" 
-            />
-            <UButton 
-              icon="i-heroicons-bookmark-solid" 
-              color="gray" 
-              variant="outline" 
-              size="sm" 
-              aria-label="收藏" 
-              @click="bookmarkArticle" 
-            />
-          </div>
+          
+          <!-- ✅ 客户端功能包装 -->
+          <ClientOnly>
+            <div class="flex items-center space-x-2 ml-6">
+              <UButton 
+                icon="i-heroicons-share-solid" 
+                color="gray" 
+                variant="outline" 
+                size="sm" 
+                aria-label="分享" 
+                @click="shareArticle" 
+              />
+              <UButton 
+                icon="i-heroicons-bookmark-solid" 
+                color="gray" 
+                variant="outline" 
+                size="sm" 
+                aria-label="收藏" 
+                @click="bookmarkArticle" 
+              />
+            </div>
+          </ClientOnly>
         </div>
 
         <!-- 文章元信息 -->
@@ -231,12 +275,12 @@ const bookmarkArticle = () => {
         </div>
       </header>
 
-      <!-- 🎯 文章内容 - 确保 KaTeX 正确渲染 -->
+      <!-- 🎯 文章内容 - 确保 KaTeX 正确渲染并应用增强功能 -->
       <article 
         id="article-content"
-        class="prose prose-gray max-w-none dark:prose-invert"
+        class="prose prose-gray max-w-none dark:prose-invert math-content"
       >
-        <!-- 🛡️ 使用 ContentRenderer 渲染内容 -->
+        <!-- 使用 ContentRenderer 渲染内容 -->
         <ContentRenderer v-if="data" :value="data" />
       </article>
 
@@ -319,9 +363,14 @@ const bookmarkArticle = () => {
   @apply bg-transparent p-0 text-gray-100; 
 }
 
-/* 🎯 KaTeX 样式确保不会有组件冲突 */
+/* ✅ 数学内容容器 - 为客户端增强做准备 */
+.math-content {
+  @apply relative;
+}
+
+/* KaTeX 样式确保不会有组件冲突 */
 .prose .katex-display {
-  @apply my-6 text-center overflow-x-auto;
+  @apply my-6 text-center overflow-x-auto relative;
 }
 
 .prose .katex {

@@ -1,4 +1,5 @@
 <!-- File: components/AppToc.vue -->
+<!-- 重构版本：严格遵循客户端边界原则 -->
 <template>
   <div class="space-y-4" v-if="shouldShowToc">
     <!-- 简化的目录标题 -->
@@ -8,41 +9,53 @@
       </h3>
     </div>
 
-    <!-- 目录列表 -->
-    <nav 
-      ref="tocContainer"
-      class="space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
-    >
-      <a
-        v-for="heading in headings"
-        :key="heading.id"
-        :ref="el => { if (activeHeading === heading.id) activeHeadingRef = el }"
-        :href="`#${heading.id}`"
-        @click.prevent="scrollToHeading(heading.id)"
-        :class="[
-          'block py-1.5 px-2 text-sm transition-colors duration-200',
-          activeHeading === heading.id
-            ? 'text-green-600 dark:text-green-400 font-medium'
-            : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400',
-          getHeadingClass(heading.depth)
-        ]"
+    <!-- ✅ 使用 ClientOnly 包装所有 DOM 依赖的内容 -->
+    <ClientOnly>
+      <!-- 目录列表 -->
+      <nav 
+        ref="tocContainer"
+        class="space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
       >
-        <span class="line-clamp-3 leading-tight">{{ heading.text }}</span>
-      </a>
-    </nav>
+        <a
+          v-for="heading in headings"
+          :key="heading.id"
+          :ref="el => { if (activeHeading === heading.id) activeHeadingRef = el }"
+          :href="`#${heading.id}`"
+          @click.prevent="scrollToHeading(heading.id)"
+          :class="[
+            'block py-1.5 px-2 text-sm transition-colors duration-200',
+            activeHeading === heading.id
+              ? 'text-green-600 dark:text-green-400 font-medium'
+              : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400',
+            getHeadingClass(heading.depth)
+          ]"
+        >
+          <span class="line-clamp-3 leading-tight">{{ heading.text }}</span>
+        </a>
+      </nav>
 
-    <!-- 简化的快捷操作 -->
-    <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
-      <UButton
-        variant="outline"
-        color="gray"
-        size="xs"
-        block
-        icon="i-heroicons-arrow-up"
-        label="回到顶部"
-        @click="scrollToTop"
-      />
-    </div>
+      <!-- 简化的快捷操作 -->
+      <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
+        <UButton
+          variant="outline"
+          color="gray"
+          size="xs"
+          block
+          icon="i-heroicons-arrow-up"
+          label="回到顶部"
+          @click="scrollToTop"
+        />
+      </div>
+
+      <!-- 加载状态模板 -->
+      <template #fallback>
+        <div class="space-y-2 animate-pulse">
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+        </div>
+      </template>
+    </ClientOnly>
   </div>
 </template>
 
@@ -53,19 +66,21 @@ interface TocHeading {
   depth: number
 }
 
+// ❌ 原代码问题：大量 DOM 操作在服务端也会执行
+// ✅ 新方案：使用响应式数据 + ClientOnly + onMounted
+
 // 响应式数据
 const headings = ref<TocHeading[]>([])
 const activeHeading = ref<string>('')
 const tocContainer = ref<HTMLElement>()
 const activeHeadingRef = ref<HTMLElement>()
 
-// 是否应该显示TOC - 基于实际内容决定
+// 计算属性（安全，不涉及 DOM）
 const shouldShowToc = computed(() => {
-  // 至少要有2个标题才显示TOC，避免只有一个主标题的情况
   return headings.value.length >= 2
 })
 
-// 获取标题级别对应的样式类 - 更简洁的间距
+// 获取标题级别对应的样式类
 const getHeadingClass = (depth: number): string => {
   const classes = {
     1: 'text-sm font-semibold',
@@ -78,11 +93,189 @@ const getHeadingClass = (depth: number): string => {
   return classes[depth as keyof typeof classes] || classes[6]
 }
 
-// 平滑滚动到指定标题
+// ✅ 所有 DOM 操作都在 onMounted 中执行
+onMounted(async () => {
+  // 确保在客户端环境
+  if (!process.client) return
+
+  // 动态初始化 TOC 功能
+  const { initializeToc } = await initializeTocFeatures()
+  
+  // 延迟执行，确保内容已渲染
+  setTimeout(() => {
+    initializeToc()
+  }, 500)
+})
+
+// ✅ 将所有 DOM 相关逻辑封装为异步函数
+const initializeTocFeatures = async () => {
+  
+  // 解析页面标题
+  const parseHeadings = () => {
+    const articleContent = document.getElementById('article-content')
+    if (!articleContent) {
+      console.log('未找到文章内容区域')
+      headings.value = []
+      return
+    }
+    
+    const headingElements = articleContent.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    const newHeadings: TocHeading[] = []
+    
+    headingElements.forEach((el, index) => {
+      let id = el.id
+      let text = el.textContent?.trim() || ''
+      
+      if (!id && text) {
+        id = text
+          .toLowerCase()
+          .replace(/[^\w\u4e00-\u9fa5\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .trim()
+        
+        if (!id) {
+          id = `heading-${index}`
+        }
+        
+        el.id = id
+      }
+      
+      if (id && text) {
+        newHeadings.push({
+          id: id,
+          text: text,
+          depth: parseInt(el.tagName.substring(1))
+        })
+      }
+    })
+    
+    headings.value = newHeadings
+  }
+
+  // 计算活跃标题
+  const updateActiveHeading = () => {
+    const scrollTop = window.scrollY
+    const articleContent = document.getElementById('article-content')
+    
+    if (!articleContent) return
+    
+    const headingElements = headings.value
+      .map(h => articleContent.querySelector(`#${h.id}`))
+      .filter(Boolean) as HTMLElement[]
+      
+    const headerHeight = 100
+    let newActiveHeading = ''
+    
+    for (let i = headingElements.length - 1; i >= 0; i--) {
+      const element = headingElements[i]
+      if (element && element.offsetTop <= scrollTop + headerHeight) {
+        newActiveHeading = element.id
+        break
+      }
+    }
+    
+    if (!newActiveHeading && scrollTop < 100) {
+      newActiveHeading = ''
+    }
+    
+    if (activeHeading.value !== newActiveHeading) {
+      activeHeading.value = newActiveHeading
+      nextTick(() => {
+        scrollActiveHeadingIntoView()
+      })
+    }
+  }
+
+  // 滚动活跃标题到可视区域
+  const scrollActiveHeadingIntoView = () => {
+    if (activeHeadingRef.value && tocContainer.value) {
+      const container = tocContainer.value
+      const activeElement = activeHeadingRef.value as HTMLElement
+      
+      const containerRect = container.getBoundingClientRect()
+      const activeRect = activeElement.getBoundingClientRect()
+      
+      const relativeTop = activeRect.top - containerRect.top + container.scrollTop
+      const relativeBottom = relativeTop + activeRect.height
+      
+      const containerTop = container.scrollTop
+      const containerBottom = containerTop + container.clientHeight
+      
+      if (relativeTop < containerTop + 40) {
+        container.scrollTo({
+          top: relativeTop - 40,
+          behavior: 'smooth'
+        })
+      } else if (relativeBottom > containerBottom - 40) {
+        container.scrollTo({
+          top: relativeBottom - container.clientHeight + 40,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }
+
+  // 节流函数
+  const throttle = (func: Function, delay: number) => {
+    let timeoutId: NodeJS.Timeout | null = null
+    let lastExecTime = 0
+    
+    return (...args: any[]) => {
+      const currentTime = Date.now()
+      
+      if (currentTime - lastExecTime > delay) {
+        func(...args)
+        lastExecTime = currentTime
+      } else {
+        if (timeoutId) clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          func(...args)
+          lastExecTime = Date.now()
+        }, delay - (currentTime - lastExecTime))
+      }
+    }
+  }
+
+  const throttledScrollHandler = throttle(updateActiveHeading, 50)
+
+  // 初始化函数
+  const initializeToc = () => {
+    parseHeadings()
+    updateActiveHeading()
+    
+    // 添加滚动监听
+    window.addEventListener('scroll', throttledScrollHandler, { passive: true })
+    
+    // 监听DOM变化
+    const observer = new MutationObserver(() => {
+      setTimeout(parseHeadings, 100)
+    })
+    
+    const articleContent = document.getElementById('article-content')
+    if (articleContent) {
+      observer.observe(articleContent, {
+        childList: true,
+        subtree: true
+      })
+    }
+    
+    // 清理函数
+    onUnmounted(() => {
+      window.removeEventListener('scroll', throttledScrollHandler)
+      observer.disconnect()
+    })
+  }
+
+  return { initializeToc }
+}
+
+// ✅ 安全的客户端操作函数
 const scrollToHeading = (id: string) => {
+  if (!process.client) return
+  
   const element = document.getElementById(id)
   if (element) {
-    const headerHeight = 80 // 考虑固定头部的高度
+    const headerHeight = 80
     const elementPosition = element.offsetTop - headerHeight
     
     window.scrollTo({
@@ -90,218 +283,37 @@ const scrollToHeading = (id: string) => {
       behavior: 'smooth'
     })
     
-    // 更新活跃标题
     activeHeading.value = id
   }
 }
 
-// 回到顶部
 const scrollToTop = () => {
+  if (!process.client) return
+  
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
   })
 }
 
-// 将活跃的标题滚动到可视区域
-const scrollActiveHeadingIntoView = () => {
-  if (activeHeadingRef.value && tocContainer.value) {
-    const container = tocContainer.value
-    const activeElement = activeHeadingRef.value as HTMLElement
-    
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeElement.getBoundingClientRect()
-    
-    // 计算相对于容器的位置
-    const relativeTop = activeRect.top - containerRect.top + container.scrollTop
-    const relativeBottom = relativeTop + activeRect.height
-    
-    // 容器的可视区域
-    const containerTop = container.scrollTop
-    const containerBottom = containerTop + container.clientHeight
-    
-    // 如果活跃元素不在可视区域内，则滚动容器
-    if (relativeTop < containerTop + 40) {
-      // 元素在可视区域上方，向上滚动
-      container.scrollTo({
-        top: relativeTop - 40,
-        behavior: 'smooth'
-      })
-    } else if (relativeBottom > containerBottom - 40) {
-      // 元素在可视区域下方，向下滚动
-      container.scrollTo({
-        top: relativeBottom - container.clientHeight + 40,
-        behavior: 'smooth'
-      })
-    }
-  }
-}
-
-// 解析页面标题 - 只解析文章内容区域
-const parseHeadings = () => {
-  // 只查找文章内容区域内的标题
-  const articleContent = document.getElementById('article-content')
-  if (!articleContent) {
-    console.log('未找到文章内容区域')
-    headings.value = []
-    return
-  }
-  
-  const headingElements = articleContent.querySelectorAll('h1, h2, h3, h4, h5, h6')
-  const newHeadings: TocHeading[] = []
-  
-  headingElements.forEach((el, index) => {
-    let id = el.id
-    let text = el.textContent?.trim() || ''
-    
-    // 如果没有ID，自动生成一个
-    if (!id && text) {
-      // 生成ID：处理中文字符
-      id = text
-        .toLowerCase()
-        .replace(/[^\w\u4e00-\u9fa5\s-]/g, '') // 保留中文、英文、数字、空格、连字符
-        .replace(/\s+/g, '-') // 空格替换为连字符
-        .trim()
-      
-      // 如果生成的ID为空，使用索引
-      if (!id) {
-        id = `heading-${index}`
-      }
-      
-      // 设置ID到元素上
-      el.id = id
-    }
-    
-    if (id && text) {
-      newHeadings.push({
-        id: id,
-        text: text,
-        depth: parseInt(el.tagName.substring(1))
-      })
-    }
-  })
-  
-  headings.value = newHeadings
-  console.log('解析到的文章标题:', newHeadings)
-  console.log('是否显示TOC:', newHeadings.length >= 2)
-}
-
-// 计算活跃标题 - 只考虑文章内容区域
-const updateActiveHeading = () => {
-  const scrollTop = window.scrollY
-  const articleContent = document.getElementById('article-content')
-  
-  if (!articleContent) {
-    return
-  }
-  
-  // 只获取文章内容区域内的标题元素
-  const headingElements = headings.value
-    .map(h => articleContent.querySelector(`#${h.id}`))
-    .filter(Boolean) as HTMLElement[]
-    
-  const headerHeight = 100
-  
-  let newActiveHeading = ''
-  
-  for (let i = headingElements.length - 1; i >= 0; i--) {
-    const element = headingElements[i]
-    if (element && element.offsetTop <= scrollTop + headerHeight) {
-      newActiveHeading = element.id
-      break
-    }
-  }
-  
-  // 如果没有找到合适的标题，且在页面顶部，清空活跃状态
-  if (!newActiveHeading && scrollTop < 100) {
-    newActiveHeading = ''
-  }
-  
-  // 只有当活跃标题改变时才更新
-  if (activeHeading.value !== newActiveHeading) {
-    activeHeading.value = newActiveHeading
-    
-    // 延迟执行滚动，确保DOM已更新
-    nextTick(() => {
-      scrollActiveHeadingIntoView()
-    })
-  }
-}
-
-// 节流函数 - 更快的响应速度
-const throttle = (func: Function, delay: number) => {
-  let timeoutId: NodeJS.Timeout | null = null
-  let lastExecTime = 0
-  
-  return (...args: any[]) => {
-    const currentTime = Date.now()
-    
-    if (currentTime - lastExecTime > delay) {
-      func(...args)
-      lastExecTime = currentTime
-    } else {
-      if (timeoutId) clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => {
-        func(...args)
-        lastExecTime = Date.now()
-      }, delay - (currentTime - lastExecTime))
-    }
-  }
-}
-
-// 节流后的滚动处理函数 - 减少延迟到50ms提高响应性
-const throttledScrollHandler = throttle(updateActiveHeading, 50)
-
-// 组件挂载时初始化
-onMounted(() => {
-  // 延迟解析，确保内容已渲染
-  nextTick(() => {
-    setTimeout(() => {
-      parseHeadings()
-      updateActiveHeading()
-    }, 300) // 减少延迟时间
-  })
-  
-  // 添加滚动监听
-  window.addEventListener('scroll', throttledScrollHandler, { passive: true })
-  
-  // 监听文章内容区域的DOM变化，重新解析标题
-  const observer = new MutationObserver(() => {
-    setTimeout(parseHeadings, 100)
-  })
-  
-  // 只监听文章内容区域的变化
-  const articleContent = document.getElementById('article-content')
-  if (articleContent) {
-    observer.observe(articleContent, {
-      childList: true,
-      subtree: true
-    })
-  }
-  
-  // 清理函数
-  onUnmounted(() => {
-    window.removeEventListener('scroll', throttledScrollHandler)
-    observer.disconnect()
-  })
-})
-
-// 监听路由变化，重新解析标题
+// 监听路由变化
 const route = useRoute()
 watch(() => route.path, () => {
-  nextTick(() => {
-    setTimeout(() => {
-      parseHeadings()
-      activeHeading.value = ''
-    }, 300)
-  })
-})
-
-// 监听活跃标题变化，自动滚动到可视区域
-watch(activeHeading, () => {
-  nextTick(() => {
-    scrollActiveHeadingIntoView()
-  })
+  if (process.client) {
+    nextTick(() => {
+      setTimeout(() => {
+        headings.value = []
+        activeHeading.value = ''
+        // 重新初始化
+        const articleContent = document.getElementById('article-content')
+        if (articleContent) {
+          initializeTocFeatures().then(({ initializeToc }) => {
+            initializeToc()
+          })
+        }
+      }, 300)
+    })
+  }
 })
 </script>
 
@@ -313,7 +325,6 @@ watch(activeHeading, () => {
   overflow: hidden;
 }
 
-/* 优化滚动条样式 */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }

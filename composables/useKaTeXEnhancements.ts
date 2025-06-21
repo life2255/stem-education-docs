@@ -1,9 +1,20 @@
 // File: composables/useKaTeXEnhancements.ts
+// 重构版本：严格遵循客户端边界
 
 export const useKaTeXEnhancements = () => {
-  // 检测公式是否溢出容器
-  const detectOverflow = () => {
-    if (process.client) {
+  // ❌ 原代码问题：直接在 composable 中执行 DOM 操作
+  // ✅ 新方案：返回初始化函数，在组件的 onMounted 中调用
+
+  // 返回一个初始化函数，而不是直接执行
+  const initializeEnhancements = () => {
+    // 确保只在客户端执行
+    if (!process.client) {
+      console.warn('KaTeX enhancements should only run on client')
+      return
+    }
+
+    // 检测公式是否溢出容器
+    const detectOverflow = () => {
       const displays = document.querySelectorAll('.katex-display')
       displays.forEach(display => {
         const container = display.parentElement
@@ -14,11 +25,9 @@ export const useKaTeXEnhancements = () => {
         }
       })
     }
-  }
 
-  // 为数学公式添加复制功能
-  const addCopyButtons = () => {
-    if (process.client) {
+    // 为数学公式添加复制功能
+    const addCopyButtons = () => {
       const displays = document.querySelectorAll('.katex-display')
       displays.forEach((display, index) => {
         // 避免重复添加
@@ -50,111 +59,9 @@ export const useKaTeXEnhancements = () => {
         display.appendChild(copyButton)
       })
     }
-  }
 
-  // 获取 LaTeX 源码
-  const getLatexSource = (display: Element): string => {
-    // 尝试从数据属性获取原始 LaTeX
-    const latexAttr = display.getAttribute('data-latex')
-    if (latexAttr) return latexAttr
-
-    // 从 KaTeX 渲染的内容中提取（不完美但可用）
-    const katexHtml = display.querySelector('.katex-html')
-    if (katexHtml) {
-      // 这里可以添加更复杂的逆向解析逻辑
-      // 简单实现：返回文本内容
-      return katexHtml.textContent || ''
-    }
-
-    return display.textContent || ''
-  }
-
-  // 显示复制成功反馈
-  const showCopyFeedback = (button: HTMLElement) => {
-    const originalIcon = button.innerHTML
-    button.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20,6 9,17 4,12"></polyline>
-      </svg>
-    `
-    button.style.color = '#10b981'
-    
-    setTimeout(() => {
-      button.innerHTML = originalIcon
-      button.style.color = ''
-    }, 2000)
-  }
-
-  // 降级复制方法
-  const fallbackCopy = (text: string) => {
-    const textArea = document.createElement('textarea')
-    textArea.value = text
-    textArea.style.position = 'fixed'
-    textArea.style.opacity = '0'
-    document.body.appendChild(textArea)
-    textArea.select()
-    
-    try {
-      document.execCommand('copy')
-    } catch (err) {
-      console.error('降级复制也失败:', err)
-    }
-    
-    document.body.removeChild(textArea)
-  }
-
-  // 为公式添加编号
-  const addEquationNumbers = () => {
-    if (process.client) {
-      const displays = document.querySelectorAll('.katex-display')
-      let equationCount = 0
-
-      displays.forEach(display => {
-        // 检查是否需要编号（可以通过类名或数据属性控制）
-        if (display.classList.contains('numbered') && !display.querySelector('.katex-numberer')) {
-          equationCount++
-          
-          const numberer = document.createElement('span')
-          numberer.className = 'katex-numberer'
-          numberer.textContent = `(${equationCount})`
-          display.appendChild(numberer)
-        }
-      })
-    }
-  }
-
-  // 为公式添加工具提示
-  const addTooltips = () => {
-    if (process.client) {
-      const mathElements = document.querySelectorAll('.katex[data-tooltip]')
-      mathElements.forEach(element => {
-        element.classList.add('math-tooltip')
-      })
-    }
-  }
-
-  // 优化公式的可访问性
-  const enhanceAccessibility = () => {
-    if (process.client) {
-      const mathElements = document.querySelectorAll('.katex')
-      mathElements.forEach(element => {
-        // 添加 ARIA 标签
-        if (!element.getAttribute('role')) {
-          element.setAttribute('role', 'math')
-        }
-        
-        // 添加 aria-label（如果有的话）
-        const altText = element.getAttribute('data-alt')
-        if (altText && !element.getAttribute('aria-label')) {
-          element.setAttribute('aria-label', altText)
-        }
-      })
-    }
-  }
-
-  // 响应式字体大小调整
-  const adjustFontSize = () => {
-    if (process.client) {
+    // 响应式字体大小调整
+    const adjustFontSize = () => {
       const handleResize = () => {
         const displays = document.querySelectorAll('.katex-display')
         const screenWidth = window.innerWidth
@@ -177,104 +84,67 @@ export const useKaTeXEnhancements = () => {
         window.removeEventListener('resize', handleResize)
       }
     }
-  }
 
-  // 公式加载动画
-  const addLoadingAnimation = () => {
-    if (process.client) {
-      const mathElements = document.querySelectorAll('.katex-display')
-      mathElements.forEach((element, index) => {
-        element.style.opacity = '0'
-        element.style.transform = 'translateY(10px)'
-        element.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
-        
-        setTimeout(() => {
-          element.style.opacity = '1'
-          element.style.transform = 'translateY(0)'
-        }, index * 100)
-      })
+    // 执行所有增强功能
+    const runEnhancements = () => {
+      detectOverflow()
+      addCopyButtons()
+      const cleanupResize = adjustFontSize()
+      
+      // 返回清理函数
+      return () => {
+        if (cleanupResize) cleanupResize()
+      }
+    }
+
+    return {
+      detectOverflow,
+      addCopyButtons,
+      adjustFontSize,
+      runEnhancements
     }
   }
 
-  // 公式高亮功能
-  const addHighlighting = () => {
-    if (process.client) {
-      const mathElements = document.querySelectorAll('.katex-display')
-      mathElements.forEach(element => {
-        element.addEventListener('click', () => {
-          // 移除其他高亮
-          mathElements.forEach(el => el.classList.remove('math-focus'))
-          // 添加当前高亮
-          element.classList.add('math-focus')
-          
-          // 3秒后移除高亮
-          setTimeout(() => {
-            element.classList.remove('math-focus')
-          }, 3000)
-        })
-      })
+  // 工具函数
+  const getLatexSource = (display: Element): string => {
+    const latexAttr = display.getAttribute('data-latex')
+    if (latexAttr) return latexAttr
+    return display.textContent || ''
+  }
+
+  const showCopyFeedback = (button: HTMLElement) => {
+    const originalIcon = button.innerHTML
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20,6 9,17 4,12"></polyline>
+      </svg>
+    `
+    button.style.color = '#10b981'
+    
+    setTimeout(() => {
+      button.innerHTML = originalIcon
+      button.style.color = ''
+    }, 2000)
+  }
+
+  const fallbackCopy = (text: string) => {
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+    textArea.select()
+    
+    try {
+      document.execCommand('copy')
+    } catch (err) {
+      console.error('降级复制也失败:', err)
     }
-  }
-
-  // 检测公式渲染错误
-  const detectRenderErrors = () => {
-    if (process.client) {
-      const mathElements = document.querySelectorAll('.katex')
-      mathElements.forEach(element => {
-        // 检查是否有错误类名或空内容
-        if (element.classList.contains('katex-error') || element.textContent?.trim() === '') {
-          element.classList.add('math-error')
-          console.warn('数学公式渲染错误:', element)
-        }
-      })
-    }
-  }
-
-  // 主初始化函数
-  const initialize = () => {
-    if (process.client) {
-      // 使用 nextTick 确保 DOM 已经渲染
-      nextTick(() => {
-        detectOverflow()
-        addCopyButtons()
-        addEquationNumbers()
-        addTooltips()
-        enhanceAccessibility()
-        addLoadingAnimation()
-        addHighlighting()
-        detectRenderErrors()
-        
-        // 设置响应式调整
-        const cleanup = adjustFontSize()
-        
-        // 监听窗口大小变化
-        window.addEventListener('resize', detectOverflow)
-        
-        // 返回清理函数
-        onUnmounted(() => {
-          window.removeEventListener('resize', detectOverflow)
-          if (cleanup) cleanup()
-        })
-      })
-    }
-  }
-
-  // 手动触发溢出检测（用于动态内容）
-  const refreshOverflowDetection = () => {
-    setTimeout(detectOverflow, 100)
-  }
-
-  // 手动重新初始化（用于动态加载的内容）
-  const reinitialize = () => {
-    setTimeout(initialize, 100)
+    
+    document.body.removeChild(textArea)
   }
 
   return {
-    initialize,
-    detectOverflow,
-    addCopyButtons,
-    addEquationNumbers,
-    refreshOverflowDetection,
-    reinitialize
+    initializeEnhancements
   }
 }

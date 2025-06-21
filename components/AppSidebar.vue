@@ -1,65 +1,46 @@
 <!-- File: components/AppSidebar.vue -->
-<!-- 修复版本：避免在 useAsyncData 中传递复杂对象 -->
+<!-- 优化版本：防止左侧栏闪动 -->
 <template>
   <div class="h-full">
-    <!-- 学科首页：显示分类导航 -->
-    <div v-if="isSubjectHomepage && currentSubject" class="space-y-6">
-      <!-- 学科标题 -->
-      <div class="pb-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ currentSubject.title }}
-        </h2>
-        <p v-if="currentSubject.description" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ currentSubject.description }}
-        </p>
+    <!-- 学科首页：/chemistry (层级=1，不显示侧栏) -->
+    <div v-if="pathSegments.length === 1" class="space-y-6">
+      <div class="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
+        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        <div>通过顶部菜单浏览分类</div>
       </div>
-
-      <!-- 分类列表 -->
-      <nav class="space-y-2">
-        <NuxtLink
-          v-for="category in currentSubject.categories"
-          :key="category.id"
-          :to="category.path"
-          :class="[
-            'relative block py-2 text-base font-semibold transition-colors duration-200',
-            route.path.startsWith(category.path)
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-gray-900 dark:text-white hover:text-green-600 dark:hover:text-green-400'
-          ]"
-        >
-          <!-- 活跃指示器 -->
-          <div
-            v-if="route.path.startsWith(category.path)"
-            class="absolute left-0 top-0 bottom-0 w-0.5 bg-green-500 rounded-r-full"
-          />
-          
-          {{ category.title }}
-        </NuxtLink>
-      </nav>
     </div>
 
-    <!-- 分类页面：显示导航结构 -->
-    <div v-else-if="navigation && navigation.length > 0" class="space-y-6">
-      <!-- 当前分类标题 -->
-      <div class="pb-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ currentCategory?.title || '内容导航' }}
-        </h2>
-        <p v-if="currentCategory?.description" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ currentCategory.description }}
-        </p>
-      </div>
-
-      <!-- 导航树 -->
-      <nav class="space-y-2">
-        <SimpleNavigationItem
-          v-for="item in navigation"
-          :key="item._path"
-          :item="item"
-          :current-path="route.path"
-          :level="0"
-        />
-      </nav>
+    <!-- 二级概述页和具体内容页：/chemistry/inorganic-chemistry (层级>=2，显示导航) -->
+    <div v-else-if="pathSegments.length >= 2" class="space-y-2">
+      <!-- 导航树 - 添加平滑过渡 -->
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+        mode="out-in"
+      >
+        <nav v-if="navigation.length > 0" key="nav-content" class="space-y-1">
+          <SimpleNavigationItem
+            v-for="item in navigation"
+            :key="item._path"
+            :item="item"
+            :current-path="route.path"
+            :level="0"
+          />
+        </nav>
+        
+        <!-- 加载状态 -->
+        <div v-else key="nav-loading" class="text-center py-8">
+          <div class="text-gray-500 dark:text-gray-400 text-sm">
+            <div class="animate-pulse">正在加载导航...</div>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- 空状态 -->
@@ -72,9 +53,6 @@
       <h3 class="text-base font-medium text-gray-900 dark:text-white mb-2">
         暂无内容
       </h3>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        该分类下还没有文章
-      </p>
     </div>
   </div>
 </template>
@@ -83,67 +61,73 @@
 import type { NavigationItem } from '~/composables/useNavigation'
 
 const route = useRoute()
-const { getCategoryNavigation, getSubjectById, getCategoryById } = useNavigation()
+const { getCategoryNavigation, getSubjectById } = useNavigation()
 
-// 计算当前路径段
-const pathSegments = computed(() => route.path.split('/').filter(Boolean))
-
-// 简化的响应式状态 - 避免复杂对象
+// 响应式数据
 const currentSubject = ref<any>(null)
-const currentCategory = ref<any>(null)  
 const navigation = ref<NavigationItem[]>([])
 
-// 判断是否为学科首页
-const isSubjectHomepage = computed(() => {
-  return pathSegments.value.length === 1 && currentSubject.value !== null
-})
+// 🎯 关键：追踪当前分类路径，避免不必要的重新加载
+const currentCategoryPath = ref<string>('')
 
-// 加载数据的函数 - 确保返回的都是纯对象
+// 路径分析
+const pathSegments = computed(() => route.path.split('/').filter(Boolean))
+
+// 🎯 智能数据加载逻辑 - 防止闪动
 const loadData = async () => {
   try {
-    // 重置状态
-    currentSubject.value = null
-    currentCategory.value = null
-    navigation.value = []
+    const segments = pathSegments.value
+    if (segments.length === 0) return
 
-    if (pathSegments.value.length === 0) return
-
-    // 加载学科信息
-    if (pathSegments.value.length >= 1) {
-      const subject = await getSubjectById(pathSegments.value[0])
-      // 确保是纯对象
+    // 1. 始终更新学科信息（轻量级操作）
+    if (segments.length >= 1) {
+      const subject = await getSubjectById(segments[0])
       currentSubject.value = subject ? JSON.parse(JSON.stringify(subject)) : null
     }
 
-    // 加载分类信息和导航
-    if (pathSegments.value.length >= 2 && currentSubject.value) {
-      const category = await getCategoryById(pathSegments.value[0], pathSegments.value[1])
-      // 确保是纯对象
-      currentCategory.value = category ? JSON.parse(JSON.stringify(category)) : null
+    // 2. 🎯 智能导航加载：只有分类路径改变时才重新加载
+    if (segments.length >= 2) {
+      const newCategoryPath = `/${segments[0]}/${segments[1]}`
       
-      const categoryPath = `/${pathSegments.value[0]}/${pathSegments.value[1]}`
-      const nav = await getCategoryNavigation(categoryPath)
-      // 确保是纯对象数组
-      navigation.value = JSON.parse(JSON.stringify(nav))
+      // ✨ 关键优化：如果是同一个分类，不重新加载导航数据
+      if (currentCategoryPath.value === newCategoryPath && navigation.value.length > 0) {
+        // 同一分类下的文章切换，保持导航数据不变
+        return
+      }
+      
+      // 分类改变了，才需要重新加载导航
+      if (currentCategoryPath.value !== newCategoryPath) {
+        // 🎯 只有跨分类时才清空数据（减少闪动）
+        if (currentCategoryPath.value && currentCategoryPath.value.split('/')[1] !== segments[0]) {
+          navigation.value = [] // 跨学科时才清空
+        }
+        
+        currentCategoryPath.value = newCategoryPath
+        
+        const nav = await getCategoryNavigation(newCategoryPath)
+        navigation.value = JSON.parse(JSON.stringify(nav))
+      }
+    } else {
+      // 回到学科首页，清空导航和分类路径
+      if (currentCategoryPath.value) {
+        currentCategoryPath.value = ''
+        navigation.value = []
+      }
     }
   } catch (error) {
     console.error('加载侧边栏数据失败:', error)
-    // 重置到安全状态
+    // 发生错误时也不要清空现有导航，除非必要
     currentSubject.value = null
-    currentCategory.value = null
-    navigation.value = []
   }
 }
 
-// 使用 watch 而不是 useAsyncData 来避免序列化问题
-watch(() => route.path, () => {
-  loadData()
-}, { immediate: true })
+// 监听路由变化
+watch(() => route.path, loadData, { immediate: true })
 
-// 确保在组件销毁时清理状态
+// 🎯 组件卸载时清理状态
 onUnmounted(() => {
-  currentSubject.value = null
-  currentCategory.value = null
+  currentCategoryPath.value = ''
   navigation.value = []
+  currentSubject.value = null
 })
 </script>

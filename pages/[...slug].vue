@@ -1,16 +1,13 @@
 <!-- File: pages/[...slug].vue -->
-<!-- 重构版本：正确集成客户端增强功能 -->
+<!-- 修复版本：解决 onUnmounted 错误 -->
 
 <script setup lang="ts">
 const route = useRoute()
 
-// ❌ 原代码问题：直接导入客户端专用的 composable
-// ✅ 新方案：在 onMounted 中动态初始化
-
 // 从 route.params.slug 构建查询路径
 const path = '/' + (Array.isArray(route.params.slug) ? route.params.slug.join('/') : route.params.slug)
 
-// 🔧 数据获取 - 保持服务端安全
+// 数据获取 - 保持服务端安全
 const { data, pending, error } = await useAsyncData(`content-${path}`, async () => {
   try {
     const content = await queryContent(path).findOne()
@@ -87,13 +84,16 @@ const formatDate = (dateString?: string) => {
   }
 }
 
-// ✅ 客户端增强功能 - 在 onMounted 中动态加载
+// ✅ 修复：将 onUnmounted 移出异步回调
+let cleanupFunction: (() => void) | null = null
+
+// ✅ 客户端增强功能 - 修复生命周期问题
 onMounted(async () => {
   // 确保在客户端环境
   if (!process.client) return
 
   try {
-    // 🎯 动态导入客户端专用的 composable
+    // 动态导入客户端专用的 composable
     const { useKaTeXEnhancements } = await import('~/composables/useKaTeXEnhancements')
     
     // 延迟初始化，确保内容已完全渲染
@@ -104,6 +104,9 @@ onMounted(async () => {
       if (enhancements) {
         // 运行所有增强功能
         const cleanup = enhancements.runEnhancements()
+        
+        // 保存清理函数
+        cleanupFunction = cleanup
         
         // 监听内容变化，重新应用增强
         const observer = new MutationObserver(() => {
@@ -121,15 +124,24 @@ onMounted(async () => {
           })
         }
         
-        // 组件卸载时清理
-        onUnmounted(() => {
-          if (cleanup) cleanup()
+        // 将 observer 也添加到清理函数中
+        const originalCleanup = cleanupFunction
+        cleanupFunction = () => {
+          if (originalCleanup) originalCleanup()
           observer.disconnect()
-        })
+        }
       }
-    }, 300) // 延迟 300ms 确保 KaTeX 渲染完成
+    }, 300)
   } catch (error) {
     console.error('加载 KaTeX 增强功能失败:', error)
+  }
+})
+
+// ✅ 修复：正确放置 onUnmounted
+onUnmounted(() => {
+  if (cleanupFunction) {
+    cleanupFunction()
+    cleanupFunction = null
   }
 })
 
@@ -231,7 +243,7 @@ const bookmarkArticle = () => {
             </div>
           </div>
           
-          <!-- ✅ 客户端功能包装 -->
+          <!-- 客户端功能包装 -->
           <ClientOnly>
             <div class="flex items-center space-x-2 ml-6">
               <UButton 
@@ -275,7 +287,7 @@ const bookmarkArticle = () => {
         </div>
       </header>
 
-      <!-- 🎯 文章内容 - 确保 KaTeX 正确渲染并应用增强功能 -->
+      <!-- 文章内容 -->
       <article 
         id="article-content"
         class="prose prose-gray max-w-none dark:prose-invert math-content"
@@ -363,12 +375,12 @@ const bookmarkArticle = () => {
   @apply bg-transparent p-0 text-gray-100; 
 }
 
-/* ✅ 数学内容容器 - 为客户端增强做准备 */
+/* 数学内容容器 */
 .math-content {
   @apply relative;
 }
 
-/* KaTeX 样式确保不会有组件冲突 */
+/* KaTeX 样式 */
 .prose .katex-display {
   @apply my-6 text-center overflow-x-auto relative;
 }
